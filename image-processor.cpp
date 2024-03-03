@@ -13,6 +13,7 @@ const std::string MotionBlurredOutputFilename = "out/motion-blurred-image.bmp"; 
 
 const double Sigma = 3.0; // Gaussian blur sigma value (blur radius, significant performance impact) 
 const int BoxSize = 9; // box blur value (blur radius, must be odd) 
+const int MotionLength = 15; // define the length of the motion blur
 
 struct RGB {
     uint8_t blue, green, red; // RGB structure with the color order as blue, green, red to allow bottom up parsing present in .bmp
@@ -30,6 +31,8 @@ std::vector<std::vector<RGB>> applyGaussianBlur(const std::vector<std::vector<RG
 void writeBmp(const std::string& filename, const std::vector<std::vector<RGB>>& image);
 // apply box blur to the image
 std::vector<std::vector<RGB>> applyBoxBlur(const std::vector<std::vector<RGB>>& image, int boxSize);
+// apply motion blur to the image
+std::vector<std::vector<RGB>> applyMotionBlur(const std::vector<std::vector<RGB>>& image, int motionLength);
 
 int main() {
     auto start = std::chrono::high_resolution_clock::now(); // start timing
@@ -57,6 +60,15 @@ int main() {
     std::cout << "Time taken for applying box blur: " << elapsed.count() << " seconds." << std::endl;
     writeBmp(BoxBlurredOutputFilename, boxBlurredImage); // write the blurred image to a new file
     std::cout << "Saved box-blurred image to \"" << BoxBlurredOutputFilename << "\"" << std::endl << std::endl;
+
+    std::cout << "Applying motion blur (MotionLength=" << MotionLength << ")..." << std::endl;
+    start = std::chrono::high_resolution_clock::now(); // reset start time
+    auto motionBlurredImage = applyMotionBlur(image, MotionLength);
+    end = std::chrono::high_resolution_clock::now(); // end timing
+    elapsed = end - start; // calculate elapsed time
+    std::cout << "Time taken for applying motion blur: " << elapsed.count() << " seconds." << std::endl;
+    writeBmp(MotionBlurredOutputFilename, motionBlurredImage); // write the motion-blurred image to a new file
+    std::cout << "Saved motion-blurred image to \"" << MotionBlurredOutputFilename << "\"" << std::endl << std::endl;
 
     return 0;
 }
@@ -204,4 +216,40 @@ std::vector<std::vector<RGB>> applyBoxBlur(const std::vector<std::vector<RGB>>& 
     }
 
     return blurredImage; // return the blurred image
+}
+
+// apply motion blur to the image based on a given motion length
+std::vector<std::vector<RGB>> applyMotionBlur(const std::vector<std::vector<RGB>>& image, int motionLength) {
+    int height = image.size(), width = image[0].size(); // get the dimensions of the input image
+    std::vector<std::vector<RGB>> blurredImage(height, std::vector<RGB>(width)); // prepare the output image with the same dimensions
+    int halfLength = motionLength / 2; // compute half the motion length to average pixels around the target pixel
+
+    // iterate through each pixel in the image
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            double totalRed = 0, totalGreen = 0, totalBlue = 0; // initialize accumulators for each color channel
+            int count = 0; // initialize a counter to keep track of the number of pixels averaged
+
+            // iterate over a range of pixels in the motion direction (horizontal)
+            for (int mx = -halfLength; mx <= halfLength; ++mx) {
+                int currentX = x + mx; // calculate the x-coordinate of the pixel to be considered
+                // ensure the current pixel is within image bounds
+                if (currentX >= 0 && currentX < width) {
+                    const RGB& pixel = image[y][currentX]; // access the pixel at the calculated position
+                    // accumulate the color values of the pixel
+                    totalRed += pixel.red;
+                    totalGreen += pixel.green;
+                    totalBlue += pixel.blue;
+                    count++; // increment the count of pixels considered
+                }
+            }
+
+            // calculate the average color value for the target pixel and clamp the values to [0, 255]
+            blurredImage[y][x].red = std::clamp(static_cast<int>(totalRed / count), 0, 255);
+            blurredImage[y][x].green = std::clamp(static_cast<int>(totalGreen / count), 0, 255);
+            blurredImage[y][x].blue = std::clamp(static_cast<int>(totalBlue / count), 0, 255);
+        }
+    }
+
+    return blurredImage; // return the image with applied motion blur
 }
