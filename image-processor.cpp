@@ -5,10 +5,10 @@
 #include <cmath>
 #include <algorithm>
 
-const std::string Filename = "small-image.bmp"; // file path
-const std::string BlurredOutputFilename = "blurred-image.bmp"; // output file path
+const std::string Filename = "in/small-image.bmp"; // file path
+const std::string BlurredOutputFilename = "out/blurred-image.bmp"; // output file path
 
-const double Sigma = 5.0; // Gaussian blur sigma value (blur radius, significant performance impact) 
+const double Sigma = 3.0; // Gaussian blur sigma value (blur radius, significant performance impact) 
 
 struct RGB {
     uint8_t blue, green, red; // RGB structure with the color order as blue, green, red to allow bottom up parsing present in .bmp
