@@ -6,7 +6,9 @@
 #include <algorithm>
 
 const std::string Filename = "small-image.bmp"; // file path
-const double Sigma = 1.0; // Gaussian blur sigma value (blur radius)
+const std::string BlurredOutputFilename = "blurred-image.bmp"; // output file path
+
+const double Sigma = 5.0; // Gaussian blur sigma value (blur radius, significant performance impact) 
 
 struct RGB {
     uint8_t blue, green, red; // RGB structure with the color order as blue, green, red to allow bottom up parsing present in .bmp
@@ -20,6 +22,8 @@ std::vector<std::vector<RGB>> readBmp(const std::string& filename);
 std::vector<std::vector<double>> generateGaussianKernel(double sigma);
 // apply Gaussian blur to the image
 std::vector<std::vector<RGB>> applyGaussianBlur(const std::vector<std::vector<RGB>>& image, const std::vector<std::vector<double>>& kernel);
+// save the new image data by copying the original file and replacing the pixel color data
+void writeBmp(const std::string& filename, const std::vector<std::vector<RGB>>& image);
 
 int main() {
     auto image = readBmp(Filename); // read the image from file
@@ -40,6 +44,9 @@ int main() {
                 << "R=" << static_cast<int>(pixelBlurred.red) << ", "
                 << "G=" << static_cast<int>(pixelBlurred.green) << ", "
                 << "B=" << static_cast<int>(pixelBlurred.blue) << std::endl;
+
+    writeBmp(BlurredOutputFilename, blurredImage); // write the blurred image to a new file
+        std::cout << "Saved blurred image to \"" << BlurredOutputFilename << "\"" << std::endl;
 
     return 0;
 }
@@ -121,4 +128,31 @@ std::vector<std::vector<RGB>> applyGaussianBlur(const std::vector<std::vector<RG
     }
 
     return blurredImage; // return the blurred image
+}
+
+// save the new image data by copying the original file and replacing the pixel color data
+void writeBmp(const std::string& filename, const std::vector<std::vector<RGB>>& image) {
+    std::ifstream bmpFile(Filename, std::ios::binary); // open the original BMP file in binary mode to read the header
+    std::ofstream outFile(filename, std::ios::binary); // open the output file in binary mode
+
+    if (!bmpFile || !outFile) {
+        std::cerr << "Could not open BMP files for reading/writing." << std::endl;
+        return;
+    }
+
+    // copy the header from the original BMP file
+    std::vector<char> header(54);
+    bmpFile.read(header.data(), 54);
+    outFile.write(header.data(), 54);
+
+    int width = image[0].size(), height = image.size();
+    int rowPadding = (4 - (width * 3) % 4) % 4;
+
+    // write the new image data
+    for (int y = height - 1; y >= 0; y--) {
+        outFile.write(reinterpret_cast<const char*>(image[y].data()), width * sizeof(RGB));
+        for (int i = 0; i < rowPadding; i++) {
+            outFile.put(0);
+        }
+    }
 }
