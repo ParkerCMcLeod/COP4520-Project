@@ -1,14 +1,18 @@
 #include <cstdint>
+#include <cmath>
+#include <chrono>
 #include <fstream>
 #include <iostream>
 #include <vector>
-#include <cmath>
 #include <algorithm>
 
 const std::string Filename = "in/small-image.bmp"; // file path
-const std::string BlurredOutputFilename = "out/blurred-image.bmp"; // output file path
+const std::string GaussianBlurredOutputFilename = "out/gaussian-blurred-image.bmp"; // output file path
+const std::string BoxBlurredOutputFilename = "out/box-blurred-image.bmp"; // output file path
+const std::string MotionBlurredOutputFilename = "out/motion-blurred-image.bmp"; // output file path
 
 const double Sigma = 3.0; // Gaussian blur sigma value (blur radius, significant performance impact) 
+const int BoxSize = 9; // box blur value (blur radius, must be odd) 
 
 struct RGB {
     uint8_t blue, green, red; // RGB structure with the color order as blue, green, red to allow bottom up parsing present in .bmp
@@ -24,29 +28,35 @@ std::vector<std::vector<double>> generateGaussianKernel(double sigma);
 std::vector<std::vector<RGB>> applyGaussianBlur(const std::vector<std::vector<RGB>>& image, const std::vector<std::vector<double>>& kernel);
 // save the new image data by copying the original file and replacing the pixel color data
 void writeBmp(const std::string& filename, const std::vector<std::vector<RGB>>& image);
+// apply box blur to the image
+std::vector<std::vector<RGB>> applyBoxBlur(const std::vector<std::vector<RGB>>& image, int boxSize);
 
 int main() {
+    auto start = std::chrono::high_resolution_clock::now(); // start timing
+    std::cout << std::endl << "Parsing input image..." << std::endl;
     auto image = readBmp(Filename); // read the image from file
+    auto end = std::chrono::high_resolution_clock::now(); // end timing
+    std::chrono::duration<double> elapsed = end - start; // calculate elapsed time
+    std::cout << "Time taken for parsing input image (" << (image[0].size() * image.size()) << "px): " << elapsed.count() << " seconds." << std::endl << std::endl;
 
-    // print RGB values of the first pixel in the original image
-    const auto& pixelOriginal = image[0][0];
-    std::cout << "RGB of the first pixel in original image: "
-                << "R=" << static_cast<int>(pixelOriginal.red) << ", "
-                << "G=" << static_cast<int>(pixelOriginal.green) << ", "
-                << "B=" << static_cast<int>(pixelOriginal.blue) << std::endl;
-
+    std::cout << "Applying Gaussian blur (Sigma=" << Sigma << ")..." << std::endl;
+    start = std::chrono::high_resolution_clock::now(); // reset start time
     auto kernel = generateGaussianKernel(Sigma); // generate the Gaussian kernel (precompute the blur matrix values)
     auto blurredImage = applyGaussianBlur(image, kernel); // apply Gaussian blur to the image
+    end = std::chrono::high_resolution_clock::now(); // end timing
+    elapsed = end - start; // calculate elapsed time
+    std::cout << "Time taken for applying Gaussian blur: " << elapsed.count() << " seconds." << std::endl;
+    writeBmp(GaussianBlurredOutputFilename, blurredImage); // write the blurred image to a new file
+    std::cout << "Saved gaussian blurred image to \"" << GaussianBlurredOutputFilename << "\"" << std::endl << std::endl;
 
-    // print RGB values of the first pixel in the blurred image
-    const auto& pixelBlurred = blurredImage[0][0];
-    std::cout << "RGB of the first pixel in blurred image: "
-                << "R=" << static_cast<int>(pixelBlurred.red) << ", "
-                << "G=" << static_cast<int>(pixelBlurred.green) << ", "
-                << "B=" << static_cast<int>(pixelBlurred.blue) << std::endl;
-
-    writeBmp(BlurredOutputFilename, blurredImage); // write the blurred image to a new file
-        std::cout << "Saved blurred image to \"" << BlurredOutputFilename << "\"" << std::endl;
+    std::cout << "Applying box blur (BoxSize=" << BoxSize << ")..." << std::endl;
+    start = std::chrono::high_resolution_clock::now(); // reset start time
+    auto boxBlurredImage = applyBoxBlur(image, BoxSize);
+    end = std::chrono::high_resolution_clock::now(); // end timing
+    elapsed = end - start; // calculate elapsed time
+    std::cout << "Time taken for applying box blur: " << elapsed.count() << " seconds." << std::endl;
+    writeBmp(BoxBlurredOutputFilename, boxBlurredImage); // write the blurred image to a new file
+    std::cout << "Saved box-blurred image to \"" << BoxBlurredOutputFilename << "\"" << std::endl << std::endl;
 
     return 0;
 }
@@ -121,6 +131,7 @@ std::vector<std::vector<RGB>> applyGaussianBlur(const std::vector<std::vector<RG
                     }
                 }
             }
+            // calculate the average for each color channel and clamp the values to the valid range [0, 255]
             blurredImage[y][x].red = std::clamp(static_cast<int>(totalRed), 0, 255); // set the red value of the blurred pixel
             blurredImage[y][x].green = std::clamp(static_cast<int>(totalGreen), 0, 255); // set the green value of the blurred pixel
             blurredImage[y][x].blue = std::clamp(static_cast<int>(totalBlue), 0, 255); // set the blue value of the blurred pixel
@@ -155,4 +166,42 @@ void writeBmp(const std::string& filename, const std::vector<std::vector<RGB>>& 
             outFile.put(0);
         }
     }
+}
+
+// apply box blur to the image
+std::vector<std::vector<RGB>> applyBoxBlur(const std::vector<std::vector<RGB>>& image, int boxSize) {
+    int height = image.size(), width = image[0].size(); // dimensions of the input image
+    std::vector<std::vector<RGB>> blurredImage(height, std::vector<RGB>(width)); // preparing the output image with the same dimensions
+    int halfBoxSize = boxSize / 2; // computing half the box size to use as an offset around each pixel
+
+    // iterate through each pixel in the image
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            int count = 0; // counter for the number of pixels considered in the box
+            double totalRed = 0, totalGreen = 0, totalBlue = 0; // accumulators for the color channels
+
+            // iterate over the box surrounding the current pixel
+            for (int dy = -halfBoxSize; dy <= halfBoxSize; ++dy) {
+                for (int dx = -halfBoxSize; dx <= halfBoxSize; ++dx) {
+                    int newY = y + dy, newX = x + dx; // calculate the position of the neighboring pixel
+
+                    // check if the neighboring pixel is within the image bounds
+                    if (newX >= 0 && newX < width && newY >= 0 && newY < height) {
+                        const auto& pixel = image[newY][newX]; // access the neighboring pixel
+                        totalRed += pixel.red; // accumulate the red color channel
+                        totalGreen += pixel.green; // accumulate the green color channel
+                        totalBlue += pixel.blue; // accumulate the blue color channel
+                        ++count; // increment the counter
+                    }
+                }
+            }
+
+            // calculate the average for each color channel and clamp the values to the valid range [0, 255]
+            blurredImage[y][x].red = std::clamp(static_cast<int>(totalRed / count), 0, 255);
+            blurredImage[y][x].green = std::clamp(static_cast<int>(totalGreen / count), 0, 255);
+            blurredImage[y][x].blue = std::clamp(static_cast<int>(totalBlue / count), 0, 255);
+        }
+    }
+
+    return blurredImage; // return the blurred image
 }
