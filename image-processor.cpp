@@ -1,5 +1,6 @@
-#include <iostream>
+#include <cstdint>
 #include <fstream>
+#include <iostream>
 #include <vector>
 
 // structure to hold rgb values of a pixel
@@ -49,6 +50,8 @@ std::vector<std::vector<RGB>> readBMP(const std::string& filename) {
 
 int main() {
     std::string filename = "small-image.bmp";
+    // std::string filename = "medium-image.bmp";
+    // std::string filename = "large-image.bmp";
     auto rgbData = readBMP(filename);
 
     // just for demonstration: print the rgb values of the first pixel
