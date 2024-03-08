@@ -8,112 +8,103 @@
 #include <stack>
 #include <tuple>
 
-const std::string Filename = "in/small-image.bmp"; // file path
+const std::string InputFilename = "in/small-image.bmp"; // File path
+const std::string GaussianBlurredOutputFilename = "out/gaussian-blurred-image.bmp"; // Output file path
+const std::string BoxBlurredOutputFilename = "out/box-blurred-image.bmp"; // Output file path
+const std::string MotionBlurredOutputFilename = "out/motion-blurred-image.bmp"; // Output file path
+const std::string BucketFillOutputFilename = "out/bucket-filled-image.bmp"; // Output file path
+const std::string BilinearResizedOutputFilename = "out/bilinear-resized-image.bmp"; // Output file path
+const std::string BicubicResizedOutputFilename = "out/bicubic-resized-image.bmp"; // Output file path
 
-const std::string GaussianBlurredOutputFilename = "out/gaussian-blurred-image.bmp"; // output file path
-const std::string BoxBlurredOutputFilename = "out/box-blurred-image.bmp"; // output file path
-const std::string MotionBlurredOutputFilename = "out/motion-blurred-image.bmp"; // output file path
-const std::string BucketFillOutputFilename = "out/bucket-filled-image.bmp"; // output file path
-const std::string BilinearResizedOutputFilename = "out/bilinear-resized-image.bmp"; // output file path
-const std::string BicubicResizedOutputFilename = "out/bicubic-resized-image.bmp"; // output file path
+constexpr double Sigma = 3.0; // Gaussian blur sigma value (blur radius, significant performance impact)
+constexpr int BoxSize = 9; // Box blur value (blur radius, must be odd)
+constexpr int MotionLength = 15; // Define the length of the motion blur
+constexpr int BucketFillThreshold = 10; // Threshold for bucket fill
+constexpr int BUCKET_FILL_X = 504; // X pixel location for starting bucket fill
+constexpr int BUCKET_FILL_Y = 341; // Y pixel location for starting bucket fill
+constexpr int desiredWidth = 800; // Desired resize width
+constexpr int desiredHeight = 600; // Desired resize height
 
-const double Sigma = 3.0; // Gaussian blur sigma value (blur radius, significant performance impact)
-const int BoxSize = 9; // box blur value (blur radius, must be odd)
-const int MotionLength = 15; // define the length of the motion blur
-const int BucketFillThreshold = 10; // threshold for bucket fill
-const int BUCKET_FILL_X = 504; // x pixel location for starting bucket fill
-const int BUCKET_FILL_Y = 341; // y pixel location for starting bucket fill
-const int desiredWidth = 800; // desired resize width
-const int desiredHeight = 600; // desired resize height
+constexpr double PI = 3.14159265358979323846; // PI constant
 
+// RGB structure with the color order as blue, green, red to allow bottom up parsing present in .bmp
 struct RGB {
-    uint8_t blue, green, red; // RGB structure with the color order as blue, green, red to allow bottom up parsing present in .bmp
+    uint8_t blue, green, red; 
 };
-
-const double PI = 3.14159265358979323846; // PI constant
 
 // Read bitmap images
 std::vector<std::vector<RGB>> readBmp(const std::string& filename);
-
 // Write and resize images
 void writeBmpResize(const std::string& filename, const std::vector<std::vector<RGB>>& image);
-
 // Generate the Gaussian kernel
 std::vector<std::vector<double>> generateGaussianKernel(double sigma);
-
 // Apply Gaussian blur to the image
 std::vector<std::vector<RGB>> applyGaussianBlur(const std::vector<std::vector<RGB>>& image, const std::vector<std::vector<double>>& kernel);
-
 // Save the new image data by copying the original file and replacing the pixel color data
 void writeBmp(const std::string& filename, const std::vector<std::vector<RGB>>& image);
-
 // Apply box blur to the image
 std::vector<std::vector<RGB>> applyBoxBlur(const std::vector<std::vector<RGB>>& image, int boxSize);
-
 // Apply motion blur to the image
 std::vector<std::vector<RGB>> applyMotionBlur(const std::vector<std::vector<RGB>>& image, int motionLength);
-
 // Apply bucket fill to the other image
 std::vector<std::vector<RGB>> applyBucketFill(const std::vector<std::vector<RGB>>& image, int threshold);
-
 // Apply bilinear resizing to the image
 std::vector<std::vector<RGB>> resizeBilinear(const std::vector<std::vector<RGB>>& image, int outputWidth, int outputHeight);
-
 // Function declaration for bicubic resizing
 std::vector<std::vector<RGB>> resizeBicubic(const std::vector<std::vector<RGB>>& image, int newWidth, int newHeight);
 
 int main() {
-    auto start = std::chrono::high_resolution_clock::now(); // start timing
+    auto start = std::chrono::high_resolution_clock::now(); // Start timing
     std::cout << std::endl << "Parsing input image..." << std::endl;
-    auto image = readBmp(Filename); // read the image from file
-    auto end = std::chrono::high_resolution_clock::now(); // end timing
-    std::chrono::duration<double> elapsed = end - start; // calculate elapsed time
+    auto image = readBmp(InputFilename); // Read the image from file
+    auto end = std::chrono::high_resolution_clock::now(); // End timing
+    std::chrono::duration<double> elapsed = end - start; // Calculate elapsed time
     std::cout << "Time taken for parsing input image (" << (image[0].size() * image.size()) << "px): " << elapsed.count() << " seconds." << std::endl << std::endl;
 
     std::cout << "Applying Gaussian blur (Sigma=" << Sigma << ")..." << std::endl;
-    start = std::chrono::high_resolution_clock::now(); // reset start time
-    auto kernel = generateGaussianKernel(Sigma); // generate the Gaussian kernel (precompute the blur matrix values)
-    auto blurredImage = applyGaussianBlur(image, kernel); // apply Gaussian blur to the image
-    end = std::chrono::high_resolution_clock::now(); // end timing
-    elapsed = end - start; // calculate elapsed time
+    start = std::chrono::high_resolution_clock::now(); // Reset start time
+    auto kernel = generateGaussianKernel(Sigma); // Generate the Gaussian kernel (precompute the blur matrix values)
+    auto blurredImage = applyGaussianBlur(image, kernel); // Apply Gaussian blur to the image
+    end = std::chrono::high_resolution_clock::now(); // End timing
+    elapsed = end - start; // Calculate elapsed time
     std::cout << "Time taken for applying Gaussian blur: " << elapsed.count() << " seconds." << std::endl;
-    writeBmp(GaussianBlurredOutputFilename, blurredImage); // write the blurred image to a new file
+    writeBmp(GaussianBlurredOutputFilename, blurredImage); // Write the blurred image to a new file
     std::cout << "Saved gaussian blurred image to \"" << GaussianBlurredOutputFilename << "\"" << std::endl << std::endl;
 
     std::cout << "Applying box blur (BoxSize=" << BoxSize << ")..." << std::endl;
-    start = std::chrono::high_resolution_clock::now(); // reset start time
+    start = std::chrono::high_resolution_clock::now(); // Reset start time
     auto boxBlurredImage = applyBoxBlur(image, BoxSize);
-    end = std::chrono::high_resolution_clock::now(); // end timing
-    elapsed = end - start; // calculate elapsed time
+    end = std::chrono::high_resolution_clock::now(); // End timing
+    elapsed = end - start; // Calculate elapsed time
     std::cout << "Time taken for applying box blur: " << elapsed.count() << " seconds." << std::endl;
-    writeBmp(BoxBlurredOutputFilename, boxBlurredImage); // write the blurred image to a new file
+    writeBmp(BoxBlurredOutputFilename, boxBlurredImage); // Write the blurred image to a new file
     std::cout << "Saved box-blurred image to \"" << BoxBlurredOutputFilename << "\"" << std::endl << std::endl;
 
     std::cout << "Applying motion blur (MotionLength=" << MotionLength << ")..." << std::endl;
-    start = std::chrono::high_resolution_clock::now(); // reset start time
+    start = std::chrono::high_resolution_clock::now(); // Reset start time
     auto motionBlurredImage = applyMotionBlur(image, MotionLength);
-    end = std::chrono::high_resolution_clock::now(); // end timing
-    elapsed = end - start; // calculate elapsed time
+    end = std::chrono::high_resolution_clock::now(); // End timing
+    elapsed = end - start; // Calculate elapsed time
     std::cout << "Time taken for applying motion blur: " << elapsed.count() << " seconds." << std::endl;
-    writeBmp(MotionBlurredOutputFilename, motionBlurredImage); // write the motion-blurred image to a new file
+    writeBmp(MotionBlurredOutputFilename, motionBlurredImage); // Write the motion-blurred image to a new file
     std::cout << "Saved motion-blurred image to \"" << MotionBlurredOutputFilename << "\"" << std::endl << std::endl;
 
     std::cout << "Applying bucket fill (Threshold=" << BucketFillThreshold << ")..." << std::endl;
-    start = std::chrono::high_resolution_clock::now(); // reset start time
+    start = std::chrono::high_resolution_clock::now(); // Reset start time
     auto bucketFilledImage = applyBucketFill(image, BucketFillThreshold);
-    end = std::chrono::high_resolution_clock::now(); // end timing
-    elapsed = end - start; // calculate elapsed time
+    end = std::chrono::high_resolution_clock::now(); // End timing
+    elapsed = end - start; // Calculate elapsed time
     std::cout << "Time taken for applying bucket fill: " << elapsed.count() << " seconds." << std::endl;
-    writeBmp(BucketFillOutputFilename, bucketFilledImage); // write the bucket-filled image to a new file
+    writeBmp(BucketFillOutputFilename, bucketFilledImage); // Write the bucket-filled image to a new file
     std::cout << "Saved bucket-filled image to \"" << BucketFillOutputFilename << "\"" << std::endl << std::endl;
 
     std::cout << "Applying bilinear resizing (Output Size=" << desiredWidth << "x" << desiredHeight << ")..." << std::endl;
-    start = std::chrono::high_resolution_clock::now(); // reset start time
+    start = std::chrono::high_resolution_clock::now(); // Reset start time
     auto bilinearResizedImage = resizeBilinear(image, desiredWidth, desiredHeight);
-    end = std::chrono::high_resolution_clock::now(); // end timing
-    elapsed = end - start; // calculate elapsed time
+    end = std::chrono::high_resolution_clock::now(); // End timing
+    elapsed = end - start; // Calculate elapsed time
     std::cout << "Time taken for applying bilinear resizing: " << elapsed.count() << " seconds." << std::endl;
-    writeBmpResize(BilinearResizedOutputFilename, bilinearResizedImage); // write the resized image to a new file
+    writeBmpResize(BilinearResizedOutputFilename, bilinearResizedImage); // Write the resized image to a new file
     std::cout << "Saved bilinear-resized image to \"" << BilinearResizedOutputFilename << "\"" << std::endl << std::endl;
 
     std::cout << "Applying bicubic resizing (Output Size=" << desiredWidth << "x" << desiredHeight << ")..." << std::endl;
@@ -128,142 +119,97 @@ int main() {
     return 0;
 }
 
-std::vector<std::vector<RGB>> resizeBilinear(const std::vector<std::vector<RGB>>& image, int newWidth, int newHeight) {
-    int imgHeight = image.size();
-    int imgWidth = image[0].size();
-
-    std::vector<std::vector<RGB>> resized(newHeight, std::vector<RGB>(newWidth));
-
-    double xRatio = static_cast<double>(imgWidth - 1) / (newWidth - 1);
-    double yRatio = static_cast<double>(imgHeight - 1) / (newHeight - 1);
-
-    for (int i = 0; i < newHeight; ++i) {
-        for (int j = 0; j < newWidth; ++j) {
-            int xL = std::floor(xRatio * j);
-            int yL = std::floor(yRatio * i);
-            int xH = std::ceil(xRatio * j);
-            int yH = std::ceil(yRatio * i);
-
-            double xWeight = (xRatio * j) - xL;
-            double yWeight = (yRatio * i) - yL;
-
-            RGB a = image[yL][xL];
-            RGB b = xH < imgWidth ? image[yL][xH] : a;
-            RGB c = yH < imgHeight ? image[yH][xL] : a;
-            RGB d = (xH < imgWidth && yH < imgHeight) ? image[yH][xH] : a;
-
-            resized[i][j].red = static_cast<uint8_t>(
-                a.red * (1 - xWeight) * (1 - yWeight) +
-                b.red * xWeight * (1 - yWeight) +
-                c.red * (1 - xWeight) * yWeight +
-                d.red * xWeight * yWeight);
-            resized[i][j].green = static_cast<uint8_t>(
-                a.green * (1 - xWeight) * (1 - yWeight) +
-                b.green * xWeight * (1 - yWeight) +
-                c.green * (1 - xWeight) * yWeight +
-                d.green * xWeight * yWeight);
-            resized[i][j].blue = static_cast<uint8_t>(
-                a.blue * (1 - xWeight) * (1 - yWeight) +
-                b.blue * xWeight * (1 - yWeight) +
-                c.blue * (1 - xWeight) * yWeight +
-                d.blue * xWeight * yWeight);
-        }
-    }
-
-    return resized;
-}
-
-// read bitmap images
+// Read bitmap images
 std::vector<std::vector<RGB>> readBmp(const std::string& filename) {
-    std::ifstream bmpFile(filename, std::ios::binary); // open the BMP file in binary mode
-    std::vector<std::vector<RGB>> image; // create a 2D vector to store the pixels
+    std::ifstream bmpFile(filename, std::ios::binary); // Open the BMP file in binary mode
+    std::vector<std::vector<RGB>> image; // Create a 2D vector to store the pixels
     if (!bmpFile) {
-        std::cerr << "Could not open BMP file!" << std::endl; // check if the file was successfully opened
+        std::cerr << "Could not open BMP file!" << std::endl; // Check if the file was successfully opened
         return image;
     }
 
-    int32_t width, height; // declare variables to store the width and height of the image
-    bmpFile.seekg(18); // seek to the width and height in the BMP header
-    bmpFile.read(reinterpret_cast<char*>(&width), sizeof(width)); // read the width
-    bmpFile.read(reinterpret_cast<char*>(&height), sizeof(height)); // read the height
+    int32_t width, height; // Declare variables to store the width and height of the image
+    bmpFile.seekg(18); // Seek to the width and height in the BMP header
+    bmpFile.read(reinterpret_cast<char*>(&width), sizeof(width)); // Read the width
+    bmpFile.read(reinterpret_cast<char*>(&height), sizeof(height)); // Read the height
 
-    image.resize(height, std::vector<RGB>(width)); // resize the vector to fit the image dimensions
-    int rowPadding = (4 - (width * 3) % 4) % 4; // calculate the row padding
-    bmpFile.seekg(54); // seek to the start of the image data
+    image.resize(height, std::vector<RGB>(width)); // Resize the vector to fit the image dimensions
+    int rowPadding = (4 - (width * 3) % 4) % 4; // Calculate the row padding
+    bmpFile.seekg(54); // Seek to the start of the image data
     for (int y = height - 1; y >= 0; y--) {
-        bmpFile.read(reinterpret_cast<char*>(image[y].data()), width * sizeof(RGB)); // read each row of the image
-        bmpFile.ignore(rowPadding); // ignore the row padding
+        bmpFile.read(reinterpret_cast<char*>(image[y].data()), width * sizeof(RGB)); // Read each row of the image
+        bmpFile.ignore(rowPadding); // Ignore the row padding
     }
 
-    return image; // return the read image
+    return image; // Return the read image
 }
 
-// generate the Gaussian kernel
+// Generate the Gaussian kernel
 std::vector<std::vector<double>> generateGaussianKernel(double sigma) {
-    int kernelSize = static_cast<int>(std::round(6 * sigma)) | 1; // calculate the kernel size (guarantee odd for central pixel)
-    std::vector<std::vector<double>> kernel(kernelSize, std::vector<double>(kernelSize)); // create a 2D vector for the kernel
-    double sum = 0.0; // store the sum of all elements in the kernel
-    int halfSize = kernelSize / 2; // calculate the half size of the kernel
+    int kernelSize = static_cast<int>(std::round(6 * sigma)) | 1; // Calculate the kernel size (guarantee odd for central pixel)
+    std::vector<std::vector<double>> kernel(kernelSize, std::vector<double>(kernelSize)); // Create a 2D vector for the kernel
+    double sum = 0.0; // Store the sum of all elements in the kernel
+    int halfSize = kernelSize / 2; // Calculate the half size of the kernel
 
     for (int x = -halfSize; x <= halfSize; x++) {
         for (int y = -halfSize; y <= halfSize; y++) {
-            double exponent = -(x * x + y * y) / (2 * sigma * sigma); // calculate the exponent
-            kernel[x + halfSize][y + halfSize] = std::exp(exponent) / (2 * PI * sigma * sigma); // calculate each kernel element
-            sum += kernel[x + halfSize][y + halfSize]; // add the element to the sum
+            double exponent = -(x * x + y * y) / (2 * sigma * sigma); // Calculate the exponent
+            kernel[x + halfSize][y + halfSize] = std::exp(exponent) / (2 * PI * sigma * sigma); // Calculate each kernel element
+            sum += kernel[x + halfSize][y + halfSize]; // Add the element to the sum
         }
     }
 
-    // normalize the kernel
+    // Normalize the kernel
     for (auto& row : kernel) {
         for (double& value : row) {
-            value /= sum; // divide each element by the sum to normalize
+            value /= sum; // Divide each element by the sum to normalize
         }
     }
 
-    return kernel; // return the generated kernel
+    return kernel; // Return the generated kernel
 }
 
-// apply Gaussian blur to an image
+// Apply Gaussian blur to an image
 std::vector<std::vector<RGB>> applyGaussianBlur(const std::vector<std::vector<RGB>>& image, const std::vector<std::vector<double>>& kernel) {
-    int height = image.size(), width = image[0].size(), kernelSize = kernel.size(); // get the dimensions of the image and the kernel
-    std::vector<std::vector<RGB>> blurredImage(height, std::vector<RGB>(width)); // create a 2D vector for the blurred image
+    int height = image.size(), width = image[0].size(), kernelSize = kernel.size(); // Get the dimensions of the image and the kernel
+    std::vector<std::vector<RGB>> blurredImage(height, std::vector<RGB>(width)); // Create a 2D vector for the blurred image
 
     for (int y = 0; y < height; ++y) {
         for (int x = 0; x < width; ++x) {
-            double totalRed = 0, totalGreen = 0, totalBlue = 0; // variables to store the total color values
+            double totalRed = 0, totalGreen = 0, totalBlue = 0; // Variables to store the total color values
             for (int ky = -kernelSize / 2; ky <= kernelSize / 2; ++ky) {
                 for (int kx = -kernelSize / 2; kx <= kernelSize / 2; ++kx) {
-                    int pixelPosX = x + kx, pixelPosY = y + ky; // calculate the position of the current pixel
-                    if (pixelPosX >= 0 && pixelPosX < width && pixelPosY >= 0 && pixelPosY < height) { // check if the position is within the image boundaries
-                        const auto& pixel = image[pixelPosY][pixelPosX]; // get the current pixel
-                        double kernelValue = kernel[ky + kernelSize / 2][kx + kernelSize / 2]; // get the corresponding kernel value
-                        totalRed += pixel.red * kernelValue; // multiply the pixel's red value by the kernel value and add to the total
-                        totalGreen += pixel.green * kernelValue; // multiply the pixel's green value by the kernel value and add to the total
-                        totalBlue += pixel.blue * kernelValue; // multiply the pixel's blue value by the kernel value and add to the total
+                    int pixelPosX = x + kx, pixelPosY = y + ky; // Calculate the position of the current pixel
+                    if (pixelPosX >= 0 && pixelPosX < width && pixelPosY >= 0 && pixelPosY < height) { // Check if the position is within the image boundaries
+                        const auto& pixel = image[pixelPosY][pixelPosX]; // Get the current pixel
+                        double kernelValue = kernel[ky + kernelSize / 2][kx + kernelSize / 2]; // Get the corresponding kernel value
+                        totalRed += pixel.red * kernelValue; // Multiply the pixel's red value by the kernel value and add to the total
+                        totalGreen += pixel.green * kernelValue; // Multiply the pixel's green value by the kernel value and add to the total
+                        totalBlue += pixel.blue * kernelValue; // Multiply the pixel's blue value by the kernel value and add to the total
                     }
                 }
             }
-            // calculate the average for each color channel and clamp the values to the valid range [0, 255]
-            blurredImage[y][x].red = std::clamp(static_cast<int>(totalRed), 0, 255); // set the red value of the blurred pixel
-            blurredImage[y][x].green = std::clamp(static_cast<int>(totalGreen), 0, 255); // set the green value of the blurred pixel
-            blurredImage[y][x].blue = std::clamp(static_cast<int>(totalBlue), 0, 255); // set the blue value of the blurred pixel
+            // Calculate the average for each color channel and clamp the values to the valid range [0, 255]
+            blurredImage[y][x].red = std::clamp(static_cast<int>(totalRed), 0, 255); // Set the red value of the blurred pixel
+            blurredImage[y][x].green = std::clamp(static_cast<int>(totalGreen), 0, 255); // Set the green value of the blurred pixel
+            blurredImage[y][x].blue = std::clamp(static_cast<int>(totalBlue), 0, 255); // Set the blue value of the blurred pixel
         }
     }
 
-    return blurredImage; // return the blurred image
+    return blurredImage; // Return the blurred image
 }
 
-// save the new image data by copying the original file and replacing the pixel color data
+// Save the new image data by copying the original file and replacing the pixel color data
 void writeBmp(const std::string& filename, const std::vector<std::vector<RGB>>& image) {
-    std::ifstream bmpFile(Filename, std::ios::binary); // open the original BMP file in binary mode to read the header
-    std::ofstream outFile(filename, std::ios::binary); // open the output file in binary mode
+    std::ifstream bmpFile(InputFilename, std::ios::binary); // Open the original BMP file in binary mode to read the header
+    std::ofstream outFile(filename, std::ios::binary); // Open the output file in binary mode
 
     if (!bmpFile || !outFile) {
         std::cerr << "Could not open BMP files for reading/writing." << std::endl;
         return;
     }
 
-    // copy the header from the original BMP file
+    // Copy the header from the original BMP file
     std::vector<char> header(54);
     bmpFile.read(header.data(), 54);
     outFile.write(header.data(), 54);
@@ -271,7 +217,7 @@ void writeBmp(const std::string& filename, const std::vector<std::vector<RGB>>& 
     int width = image[0].size(), height = image.size();
     int rowPadding = (4 - (width * 3) % 4) % 4;
 
-    // write the new image data
+    // Write the new image data
     for (int y = height - 1; y >= 0; y--) {
         outFile.write(reinterpret_cast<const char*>(image[y].data()), width * sizeof(RGB));
         for (int i = 0; i < rowPadding; i++) {
@@ -326,78 +272,78 @@ void writeBmpResize(const std::string& filename, const std::vector<std::vector<R
     }
 }
 
-// apply box blur to the image
+// Apply box blur to the image
 std::vector<std::vector<RGB>> applyBoxBlur(const std::vector<std::vector<RGB>>& image, int boxSize) {
-    int height = image.size(), width = image[0].size(); // dimensions of the input image
-    std::vector<std::vector<RGB>> blurredImage(height, std::vector<RGB>(width)); // preparing the output image with the same dimensions
-    int halfBoxSize = boxSize / 2; // computing half the box size to use as an offset around each pixel
+    int height = image.size(), width = image[0].size(); // Dimensions of the input image
+    std::vector<std::vector<RGB>> blurredImage(height, std::vector<RGB>(width)); // Preparing the output image with the same dimensions
+    int halfBoxSize = boxSize / 2; // Computing half the box size to use as an offset around each pixel
 
-    // iterate through each pixel in the image
+    // Iterate through each pixel in the image
     for (int y = 0; y < height; ++y) {
         for (int x = 0; x < width; ++x) {
-            int count = 0; // counter for the number of pixels considered in the box
-            double totalRed = 0, totalGreen = 0, totalBlue = 0; // accumulators for the color channels
+            int count = 0; // Counter for the number of pixels considered in the box
+            double totalRed = 0, totalGreen = 0, totalBlue = 0; // Accumulators for the color channels
 
-            // iterate over the box surrounding the current pixel
+            // Iterate over the box surrounding the current pixel
             for (int dy = -halfBoxSize; dy <= halfBoxSize; ++dy) {
                 for (int dx = -halfBoxSize; dx <= halfBoxSize; ++dx) {
-                    int newY = y + dy, newX = x + dx; // calculate the position of the neighboring pixel
+                    int newY = y + dy, newX = x + dx; // Calculate the position of the neighboring pixel
 
-                    // check if the neighboring pixel is within the image bounds
+                    // Check if the neighboring pixel is within the image bounds
                     if (newX >= 0 && newX < width && newY >= 0 && newY < height) {
-                        const auto& pixel = image[newY][newX]; // access the neighboring pixel
-                        totalRed += pixel.red; // accumulate the red color channel
-                        totalGreen += pixel.green; // accumulate the green color channel
-                        totalBlue += pixel.blue; // accumulate the blue color channel
-                        ++count; // increment the counter
+                        const auto& pixel = image[newY][newX]; // Access the neighboring pixel
+                        totalRed += pixel.red; // Accumulate the red color channel
+                        totalGreen += pixel.green; // Accumulate the green color channel
+                        totalBlue += pixel.blue; // Accumulate the blue color channel
+                        ++count; // Increment the counter
                     }
                 }
             }
 
-            // calculate the average for each color channel and clamp the values to the valid range [0, 255]
+            // Calculate the average for each color channel and clamp the values to the valid range [0, 255]
             blurredImage[y][x].red = std::clamp(static_cast<int>(totalRed / count), 0, 255);
             blurredImage[y][x].green = std::clamp(static_cast<int>(totalGreen / count), 0, 255);
             blurredImage[y][x].blue = std::clamp(static_cast<int>(totalBlue / count), 0, 255);
         }
     }
 
-    return blurredImage; // return the blurred image
+    return blurredImage; // Return the blurred image
 }
 
-// apply motion blur to the image based on a given motion length
+// Apply motion blur to the image based on a given motion length
 std::vector<std::vector<RGB>> applyMotionBlur(const std::vector<std::vector<RGB>>& image, int motionLength) {
-    int height = image.size(), width = image[0].size(); // get the dimensions of the input image
-    std::vector<std::vector<RGB>> blurredImage(height, std::vector<RGB>(width)); // prepare the output image with the same dimensions
-    int halfLength = motionLength / 2; // compute half the motion length to average pixels around the target pixel
+    int height = image.size(), width = image[0].size(); // Get the dimensions of the input image
+    std::vector<std::vector<RGB>> blurredImage(height, std::vector<RGB>(width)); // Prepare the output image with the same dimensions
+    int halfLength = motionLength / 2; // Compute half the motion length to average pixels around the target pixel
 
-    // iterate through each pixel in the image
+    // Iterate through each pixel in the image
     for (int y = 0; y < height; ++y) {
         for (int x = 0; x < width; ++x) {
-            double totalRed = 0, totalGreen = 0, totalBlue = 0; // initialize accumulators for each color channel
-            int count = 0; // initialize a counter to keep track of the number of pixels averaged
+            double totalRed = 0, totalGreen = 0, totalBlue = 0; // Initialize accumulators for each color channel
+            int count = 0; // Initialize a counter to keep track of the number of pixels averaged
 
-            // iterate over a range of pixels in the motion direction (horizontal)
+            // Iterate over a range of pixels in the motion direction (horizontal)
             for (int mx = -halfLength; mx <= halfLength; ++mx) {
-                int currentX = x + mx; // calculate the x-coordinate of the pixel to be considered
-                // ensure the current pixel is within image bounds
+                int currentX = x + mx; // Calculate the x-coordinate of the pixel to be considered
+                // Ensure the current pixel is within image bounds
                 if (currentX >= 0 && currentX < width) {
-                    const RGB& pixel = image[y][currentX]; // access the pixel at the calculated position
-                    // accumulate the color values of the pixel
+                    const RGB& pixel = image[y][currentX]; // Access the pixel at the calculated position
+                    // Accumulate the color values of the pixel
                     totalRed += pixel.red;
                     totalGreen += pixel.green;
                     totalBlue += pixel.blue;
-                    count++; // increment the count of pixels considered
+                    count++; // Increment the count of pixels considered
                 }
             }
 
-            // calculate the average color value for the target pixel and clamp the values to [0, 255]
+            // Calculate the average color value for the target pixel and clamp the values to [0, 255]
             blurredImage[y][x].red = std::clamp(static_cast<int>(totalRed / count), 0, 255);
             blurredImage[y][x].green = std::clamp(static_cast<int>(totalGreen / count), 0, 255);
             blurredImage[y][x].blue = std::clamp(static_cast<int>(totalBlue / count), 0, 255);
         }
     }
 
-    return blurredImage; // return the image with applied motion blur
+    return blurredImage; // Return the image with applied motion blur
 }
 
 // Function to calculate Euclidean distance between two colors in RGB space
@@ -453,28 +399,33 @@ std::vector<std::vector<RGB>> applyBucketFill(const std::vector<std::vector<RGB>
     return bucketFilledImage;
 }
 
-// Bicubic interpolation kernel (Catmull-Rom spline)
+// Bicubic interpolation kernel based on Catmull-Rom spline
 double cubicInterpolate(double p[4], double x) {
-    return p[1] + 0.5 * x*(p[2] - p[0] + x*(2.0*p[0] - 5.0*p[1] + 4.0*p[2] - p[3] + x*(3.0*(p[1] - p[2]) + p[3] - p[0])));
+    // Performs the cubic interpolation formula on a set of four points (p[0] to p[3]) and a parameter x
+    return p[1] + 0.5 * x * (p[2] - p[0] + x * (2.0 * p[0] - 5.0 * p[1] + 4.0 * p[2] - p[3] + x * (3.0 * (p[1] - p[2]) + p[3] - p[0])));
 }
 
+// Function to perform bicubic interpolation on a 4x4 patch of an image
 double bicubicInterpolate(double arr[4][4], double x, double y) {
     double colArr[4];
+    // Interpolates the values along the y-axis
     for (int i = 0; i < 4; i++) {
         colArr[i] = cubicInterpolate(arr[i], y);
     }
+    // Interpolates the result along the x-axis
     return cubicInterpolate(colArr, x);
 }
 
+// Function to resize an image using bicubic interpolation
 std::vector<std::vector<RGB>> resizeBicubic(const std::vector<std::vector<RGB>>& image, int newWidth, int newHeight) {
     int imgHeight = image.size();
     int imgWidth = image[0].size();
 
     std::vector<std::vector<RGB>> resized(newHeight, std::vector<RGB>(newWidth));
-
     double xRatio = static_cast<double>(imgWidth) / newWidth;
     double yRatio = static_cast<double>(imgHeight) / newHeight;
 
+    // Loop over each pixel in the new image
     for (int i = 0; i < newHeight; ++i) {
         for (int j = 0; j < newWidth; ++j) {
             double x = (j + 0.5) * xRatio - 0.5;
@@ -488,12 +439,12 @@ std::vector<std::vector<RGB>> resizeBicubic(const std::vector<std::vector<RGB>>&
 
             double redVals[4][4], greenVals[4][4], blueVals[4][4];
 
+            // Collect the 4x4 neighborhood of the current pixel from the original image
             for (int m = -1; m <= 2; ++m) {
                 for (int n = -1; n <= 2; ++n) {
                     int xN = std::clamp(xInt + n, 0, imgWidth - 1);
                     int yM = std::clamp(yInt + m, 0, imgHeight - 1);
 
-                    // Access the pixel by value (or as a const reference if modification is not needed)
                     const RGB& pixel = image[yM][xN];
                     redVals[m + 1][n + 1] = pixel.red;
                     greenVals[m + 1][n + 1] = pixel.green;
@@ -501,9 +452,58 @@ std::vector<std::vector<RGB>> resizeBicubic(const std::vector<std::vector<RGB>>&
                 }
             }
 
+            // Interpolate the color values for the new pixel and ensure they are within the valid range
             resized[i][j].red = std::clamp(static_cast<int>(bicubicInterpolate(redVals, xDiff, yDiff)), 0, 255);
             resized[i][j].green = std::clamp(static_cast<int>(bicubicInterpolate(greenVals, xDiff, yDiff)), 0, 255);
             resized[i][j].blue = std::clamp(static_cast<int>(bicubicInterpolate(blueVals, xDiff, yDiff)), 0, 255);
+        }
+    }
+
+    return resized;
+}
+
+// Function to resize an image using bilinear interpolation
+std::vector<std::vector<RGB>> resizeBilinear(const std::vector<std::vector<RGB>>& image, int newWidth, int newHeight) {
+    int imgHeight = image.size();
+    int imgWidth = image[0].size();
+
+    std::vector<std::vector<RGB>> resized(newHeight, std::vector<RGB>(newWidth));
+    double xRatio = static_cast<double>(imgWidth - 1) / (newWidth - 1);
+    double yRatio = static_cast<double>(imgHeight - 1) / (newHeight - 1);
+
+    // Loop over each pixel in the new image
+    for (int i = 0; i < newHeight; ++i) {
+        for (int j = 0; j < newWidth; ++j) {
+            int xL = std::floor(xRatio * j);
+            int yL = std::floor(yRatio * i);
+            int xH = std::ceil(xRatio * j);
+            int yH = std::ceil(yRatio * i);
+
+            double xWeight = (xRatio * j) - xL;
+            double yWeight = (yRatio * i) - yL;
+
+            // Interpolate between the four neighboring pixels to find the new pixel value
+            RGB a = image[yL][xL];
+            RGB b = xH < imgWidth ? image[yL][xH] : a;
+            RGB c = yH < imgHeight ? image[yH][xL] : a;
+            RGB d = (xH < imgWidth && yH < imgHeight) ? image[yH][xH] : a;
+
+            // Calculate the new pixel's color values and ensure they are within the valid range
+            resized[i][j].red = static_cast<uint8_t>(
+                a.red * (1 - xWeight) * (1 - yWeight) +
+                b.red * xWeight * (1 - yWeight) +
+                c.red * (1 - xWeight) * yWeight +
+                d.red * xWeight * yWeight);
+            resized[i][j].green = static_cast<uint8_t>(
+                a.green * (1 - xWeight) * (1 - yWeight) +
+                b.green * xWeight * (1 - yWeight) +
+                c.green * (1 - xWeight) * yWeight +
+                d.green * xWeight * yWeight);
+            resized[i][j].blue = static_cast<uint8_t>(
+                a.blue * (1 - xWeight) * (1 - yWeight) +
+                b.blue * xWeight * (1 - yWeight) +
+                c.blue * (1 - xWeight) * yWeight +
+                d.blue * xWeight * yWeight);
         }
     }
 
