@@ -9,17 +9,18 @@
 #include <tuple>
 
 const std::string Filename = "in/small-image.bmp"; // file path
-const std::string BucketFillFilename = "in/bucket-fill-example.bmp"; // file path
 
 const std::string GaussianBlurredOutputFilename = "out/gaussian-blurred-image.bmp"; // output file path
 const std::string BoxBlurredOutputFilename = "out/box-blurred-image.bmp"; // output file path
 const std::string MotionBlurredOutputFilename = "out/motion-blurred-image.bmp"; // output file path
 const std::string BucketFillOutputFilename = "out/bucket-filled-image.bmp"; // output file path
 
-const double Sigma = 3.0; // Gaussian blur sigma value (blur radius, significant performance impact) 
-const int BoxSize = 9; // box blur value (blur radius, must be odd) 
+const double Sigma = 3.0; // Gaussian blur sigma value (blur radius, significant performance impact)
+const int BoxSize = 9; // box blur value (blur radius, must be odd)
 const int MotionLength = 15; // define the length of the motion blur
-const int BucketFillThreshold = 50; // threshold for bucket fill
+const int BucketFillThreshold = 10; // threshold for bucket fill
+const int BUCKET_FILL_X = 504; // x pixel location for starting bucket fill
+const int BUCKET_FILL_Y = 341; // y pixel location for starting bucket fill
 
 struct RGB {
     uint8_t blue, green, red; // RGB structure with the color order as blue, green, red to allow bottom up parsing present in .bmp
@@ -46,38 +47,38 @@ int main() {
     auto start = std::chrono::high_resolution_clock::now(); // start timing
     std::cout << std::endl << "Parsing input image..." << std::endl;
     auto image = readBmp(Filename); // read the image from file
-    auto bucketFillImage = readBmp(BucketFillFilename); // read the image for bucket fill
+    auto bucketFillImage = readBmp(Filename); // read the image for bucket fill
     auto end = std::chrono::high_resolution_clock::now(); // end timing
     std::chrono::duration<double> elapsed = end - start; // calculate elapsed time
     std::cout << "Time taken for parsing input image (" << (image[0].size() * image.size()) << "px): " << elapsed.count() << " seconds." << std::endl << std::endl;
 
-    std::cout << "Applying Gaussian blur (Sigma=" << Sigma << ")..." << std::endl;
-    start = std::chrono::high_resolution_clock::now(); // reset start time
-    auto kernel = generateGaussianKernel(Sigma); // generate the Gaussian kernel (precompute the blur matrix values)
-    auto blurredImage = applyGaussianBlur(image, kernel); // apply Gaussian blur to the image
-    end = std::chrono::high_resolution_clock::now(); // end timing
-    elapsed = end - start; // calculate elapsed time
-    std::cout << "Time taken for applying Gaussian blur: " << elapsed.count() << " seconds." << std::endl;
-    writeBmp(GaussianBlurredOutputFilename, blurredImage); // write the blurred image to a new file
-    std::cout << "Saved gaussian blurred image to \"" << GaussianBlurredOutputFilename << "\"" << std::endl << std::endl;
+    // std::cout << "Applying Gaussian blur (Sigma=" << Sigma << ")..." << std::endl;
+    // start = std::chrono::high_resolution_clock::now(); // reset start time
+    // auto kernel = generateGaussianKernel(Sigma); // generate the Gaussian kernel (precompute the blur matrix values)
+    // auto blurredImage = applyGaussianBlur(image, kernel); // apply Gaussian blur to the image
+    // end = std::chrono::high_resolution_clock::now(); // end timing
+    // elapsed = end - start; // calculate elapsed time
+    // std::cout << "Time taken for applying Gaussian blur: " << elapsed.count() << " seconds." << std::endl;
+    // writeBmp(GaussianBlurredOutputFilename, blurredImage); // write the blurred image to a new file
+    // std::cout << "Saved gaussian blurred image to \"" << GaussianBlurredOutputFilename << "\"" << std::endl << std::endl;
 
-    std::cout << "Applying box blur (BoxSize=" << BoxSize << ")..." << std::endl;
-    start = std::chrono::high_resolution_clock::now(); // reset start time
-    auto boxBlurredImage = applyBoxBlur(image, BoxSize);
-    end = std::chrono::high_resolution_clock::now(); // end timing
-    elapsed = end - start; // calculate elapsed time
-    std::cout << "Time taken for applying box blur: " << elapsed.count() << " seconds." << std::endl;
-    writeBmp(BoxBlurredOutputFilename, boxBlurredImage); // write the blurred image to a new file
-    std::cout << "Saved box-blurred image to \"" << BoxBlurredOutputFilename << "\"" << std::endl << std::endl;
+    // std::cout << "Applying box blur (BoxSize=" << BoxSize << ")..." << std::endl;
+    // start = std::chrono::high_resolution_clock::now(); // reset start time
+    // auto boxBlurredImage = applyBoxBlur(image, BoxSize);
+    // end = std::chrono::high_resolution_clock::now(); // end timing
+    // elapsed = end - start; // calculate elapsed time
+    // std::cout << "Time taken for applying box blur: " << elapsed.count() << " seconds." << std::endl;
+    // writeBmp(BoxBlurredOutputFilename, boxBlurredImage); // write the blurred image to a new file
+    // std::cout << "Saved box-blurred image to \"" << BoxBlurredOutputFilename << "\"" << std::endl << std::endl;
 
-    std::cout << "Applying motion blur (MotionLength=" << MotionLength << ")..." << std::endl;
-    start = std::chrono::high_resolution_clock::now(); // reset start time
-    auto motionBlurredImage = applyMotionBlur(image, MotionLength);
-    end = std::chrono::high_resolution_clock::now(); // end timing
-    elapsed = end - start; // calculate elapsed time
-    std::cout << "Time taken for applying motion blur: " << elapsed.count() << " seconds." << std::endl;
-    writeBmp(MotionBlurredOutputFilename, motionBlurredImage); // write the motion-blurred image to a new file
-    std::cout << "Saved motion-blurred image to \"" << MotionBlurredOutputFilename << "\"" << std::endl << std::endl;
+    // std::cout << "Applying motion blur (MotionLength=" << MotionLength << ")..." << std::endl;
+    // start = std::chrono::high_resolution_clock::now(); // reset start time
+    // auto motionBlurredImage = applyMotionBlur(image, MotionLength);
+    // end = std::chrono::high_resolution_clock::now(); // end timing
+    // elapsed = end - start; // calculate elapsed time
+    // std::cout << "Time taken for applying motion blur: " << elapsed.count() << " seconds." << std::endl;
+    // writeBmp(MotionBlurredOutputFilename, motionBlurredImage); // write the motion-blurred image to a new file
+    // std::cout << "Saved motion-blurred image to \"" << MotionBlurredOutputFilename << "\"" << std::endl << std::endl;
 
     std::cout << "Applying bucket fill (Threshold=" << BucketFillThreshold << ")..." << std::endl;
     start = std::chrono::high_resolution_clock::now(); // reset start time
@@ -272,12 +273,20 @@ std::vector<std::vector<RGB>> applyMotionBlur(const std::vector<std::vector<RGB>
     return blurredImage; // return the image with applied motion blur
 }
 
-// Improved applyBucketFill function
-std::vector<std::vector<RGB>> applyBucketFill(const std::vector<std::vector<RGB>>& image, int threshold) {
+// Function to calculate Euclidean distance between two colors in RGB space
+double colorDistance(const RGB& color1, const RGB& color2) {
+    return std::sqrt(
+        (color1.red - color2.red) * (color1.red - color2.red) +
+        (color1.green - color2.green) * (color1.green - color2.green) +
+        (color1.blue - color2.blue) * (color1.blue - color2.blue)
+    );
+}
 
+std::vector<std::vector<RGB>> applyBucketFill(const std::vector<std::vector<RGB>>& image, int threshold) {
     int height = image.size(), width = image[0].size();
     const RGB fillColor  = {0, 255, 0}; // Green color
-    int seedX = width / 2, seedY = height / 2; // Seed point
+    int seedX = BUCKET_FILL_X;
+    int seedY = BUCKET_FILL_Y;
 
     std::vector<std::vector<RGB>> bucketFilledImage = image;
     std::vector<std::vector<bool>> visited(height, std::vector<bool>(width, false));
@@ -302,10 +311,8 @@ std::vector<std::vector<RGB>> applyBucketFill(const std::vector<std::vector<RGB>
         // Check bounds and if the pixel has already been visited
         if (x < 0 || x >= width || y < 0 || y >= height || visited[y][x]) continue;
 
-        // Check color threshold
-        if (std::abs(image[y][x].red - targetColor.red) <= threshold &&
-            std::abs(image[y][x].green - targetColor.green) <= threshold &&
-            std::abs(image[y][x].blue - targetColor.blue) <= threshold) {
+        // Improved check using Euclidean distance for color threshold
+        if (colorDistance(image[y][x], targetColor) <= threshold) {
             bucketFilledImage[y][x] = fillColor; // Apply fill color
             visited[y][x] = true; // Mark as visited
 
