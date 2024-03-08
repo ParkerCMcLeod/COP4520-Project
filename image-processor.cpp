@@ -14,6 +14,7 @@ const std::string GaussianBlurredOutputFilename = "out/gaussian-blurred-image.bm
 const std::string BoxBlurredOutputFilename = "out/box-blurred-image.bmp"; // output file path
 const std::string MotionBlurredOutputFilename = "out/motion-blurred-image.bmp"; // output file path
 const std::string BucketFillOutputFilename = "out/bucket-filled-image.bmp"; // output file path
+const std::string BilinearResizedOutputFilename = "out/bilinear-resized-image.bmp"; // output file path
 
 const double Sigma = 3.0; // Gaussian blur sigma value (blur radius, significant performance impact)
 const int BoxSize = 9; // box blur value (blur radius, must be odd)
@@ -21,6 +22,8 @@ const int MotionLength = 15; // define the length of the motion blur
 const int BucketFillThreshold = 10; // threshold for bucket fill
 const int BUCKET_FILL_X = 504; // x pixel location for starting bucket fill
 const int BUCKET_FILL_Y = 341; // y pixel location for starting bucket fill
+const int desiredWidth = 800; // Example desired width
+const int desiredHeight = 600;
 
 struct RGB {
     uint8_t blue, green, red; // RGB structure with the color order as blue, green, red to allow bottom up parsing present in .bmp
@@ -30,6 +33,8 @@ const double PI = 3.14159265358979323846; // PI constant
 
 // read bitmap images
 std::vector<std::vector<RGB>> readBmp(const std::string& filename);
+// write and resize images
+void writeBmpResize(const std::string& filename, const std::vector<std::vector<RGB>>& image);
 // generate the Gaussian kernel
 std::vector<std::vector<double>> generateGaussianKernel(double sigma);
 // apply Gaussian blur to the image
@@ -42,6 +47,8 @@ std::vector<std::vector<RGB>> applyBoxBlur(const std::vector<std::vector<RGB>>& 
 std::vector<std::vector<RGB>> applyMotionBlur(const std::vector<std::vector<RGB>>& image, int motionLength);
 // apply bucket fill to the other image
 std::vector<std::vector<RGB>> applyBucketFill(const std::vector<std::vector<RGB>>& image, int threshold);
+// apply bilinear to the image
+std::vector<std::vector<RGB>> resizeBilinear(const std::vector<std::vector<RGB>>& image, int outputWidth, int outputHeight);
 
 int main() {
     auto start = std::chrono::high_resolution_clock::now(); // start timing
@@ -80,16 +87,69 @@ int main() {
     // writeBmp(MotionBlurredOutputFilename, motionBlurredImage); // write the motion-blurred image to a new file
     // std::cout << "Saved motion-blurred image to \"" << MotionBlurredOutputFilename << "\"" << std::endl << std::endl;
 
-    std::cout << "Applying bucket fill (Threshold=" << BucketFillThreshold << ")..." << std::endl;
+    //std::cout << "Applying bucket fill (Threshold=" << BucketFillThreshold << ")..." << std::endl;
+    //start = std::chrono::high_resolution_clock::now(); // reset start time
+    //auto bucketFilledImage = applyBucketFill(bucketFillImage, BucketFillThreshold);
+    //end = std::chrono::high_resolution_clock::now(); // end timing
+    //elapsed = end - start; // calculate elapsed time
+    //std::cout << "Time taken for applying bucket fill: " << elapsed.count() << " seconds." << std::endl;
+    //writeBmp(BucketFillOutputFilename, bucketFilledImage); // write the bucket-filled image to a new file
+    //std::cout << "Saved bucket-filled image to \"" << BucketFillOutputFilename << "\"" << std::endl << std::endl;
+
+    std::cout << "Applying bilinear resizing (Output Size=" << desiredWidth << "x" << desiredHeight << ")..." << std::endl;
     start = std::chrono::high_resolution_clock::now(); // reset start time
-    auto bucketFilledImage = applyBucketFill(bucketFillImage, BucketFillThreshold);
+    auto bilinearResizedImage = resizeBilinear(image, desiredWidth, desiredHeight);
     end = std::chrono::high_resolution_clock::now(); // end timing
     elapsed = end - start; // calculate elapsed time
-    std::cout << "Time taken for applying bucket fill: " << elapsed.count() << " seconds." << std::endl;
-    writeBmp(BucketFillOutputFilename, bucketFilledImage); // write the bucket-filled image to a new file
-    std::cout << "Saved bucket-filled image to \"" << BucketFillOutputFilename << "\"" << std::endl << std::endl;
+    std::cout << "Time taken for applying bilinear resizing: " << elapsed.count() << " seconds." << std::endl;
+    writeBmpResize(BilinearResizedOutputFilename, bilinearResizedImage); // write the resized image to a new file
+    std::cout << "Saved bilinear-resized image to \"" << BilinearResizedOutputFilename << "\"" << std::endl << std::endl;
 
     return 0;
+}
+std::vector<std::vector<RGB>> resizeBilinear(const std::vector<std::vector<RGB>>& image, int newWidth, int newHeight) {
+    int imgHeight = image.size();
+    int imgWidth = image[0].size();
+
+    std::vector<std::vector<RGB>> resized(newHeight, std::vector<RGB>(newWidth));
+
+    double xRatio = static_cast<double>(imgWidth - 1) / (newWidth - 1);
+    double yRatio = static_cast<double>(imgHeight - 1) / (newHeight - 1);
+
+    for (int i = 0; i < newHeight; ++i) {
+        for (int j = 0; j < newWidth; ++j) {
+            int xL = std::floor(xRatio * j);
+            int yL = std::floor(yRatio * i);
+            int xH = std::ceil(xRatio * j);
+            int yH = std::ceil(yRatio * i);
+
+            double xWeight = (xRatio * j) - xL;
+            double yWeight = (yRatio * i) - yL;
+
+            RGB a = image[yL][xL];
+            RGB b = xH < imgWidth ? image[yL][xH] : a;
+            RGB c = yH < imgHeight ? image[yH][xL] : a;
+            RGB d = (xH < imgWidth && yH < imgHeight) ? image[yH][xH] : a;
+
+            resized[i][j].red = static_cast<uint8_t>(
+                a.red * (1 - xWeight) * (1 - yWeight) +
+                b.red * xWeight * (1 - yWeight) +
+                c.red * (1 - xWeight) * yWeight +
+                d.red * xWeight * yWeight);
+            resized[i][j].green = static_cast<uint8_t>(
+                a.green * (1 - xWeight) * (1 - yWeight) +
+                b.green * xWeight * (1 - yWeight) +
+                c.green * (1 - xWeight) * yWeight +
+                d.green * xWeight * yWeight);
+            resized[i][j].blue = static_cast<uint8_t>(
+                a.blue * (1 - xWeight) * (1 - yWeight) +
+                b.blue * xWeight * (1 - yWeight) +
+                c.blue * (1 - xWeight) * yWeight +
+                d.blue * xWeight * yWeight);
+        }
+    }
+
+    return resized;
 }
 
 // read bitmap images
@@ -198,6 +258,52 @@ void writeBmp(const std::string& filename, const std::vector<std::vector<RGB>>& 
         }
     }
 }
+void writeBmpResize(const std::string& filename, const std::vector<std::vector<RGB>>& image) {
+    std::ofstream outFile(filename, std::ios::binary);
+    if (!outFile) {
+        std::cerr << "Could not open output file for writing." << std::endl;
+        return;
+    }
+
+    int width = image[0].size(), height = image.size();
+    int rowPadding = (4 - (width * 3) % 4) % 4;
+    int fileSize = 54 + (width*3 + rowPadding) * height; // Header size (54 bytes) + pixel data
+
+    // Simple BMP header for a 24-bit BMP
+    unsigned char header[54] = {
+        'B','M',  // Signature
+        0,0,0,0,  // Image file size in bytes
+        0,0,0,0,  // Reserved
+        54,0,0,0, // Start of pixel array
+        40,0,0,0, // Info header size
+        0,0,0,0,  // Image width
+        0,0,0,0,  // Image height
+        1,0,      // Number of color planes
+        24,0,     // Bits per pixel
+        0,0,0,0,  // Compression
+        0,0,0,0,  // Image size
+        0,0,0,0,  // Horizontal resolution
+        0,0,0,0,  // Vertical resolution
+        0,0,0,0,  // Colors in color table
+        0,0,0,0,  // Important color count
+    };
+
+    // Fill in the file size, width, and height in the header
+    *reinterpret_cast<int*>(&header[2]) = fileSize;
+    *reinterpret_cast<int*>(&header[18]) = width;
+    *reinterpret_cast<int*>(&header[22]) = height;
+
+    // Write the header
+    outFile.write(reinterpret_cast<const char*>(header), 54);
+
+    // Write the pixel data
+    for (int y = height - 1; y >= 0; --y) {
+        outFile.write(reinterpret_cast<const char*>(image[y].data()), width * sizeof(RGB));
+        for (int i = 0; i < rowPadding; ++i) {
+            outFile.put(0);
+        }
+    }
+}
 
 // apply box blur to the image
 std::vector<std::vector<RGB>> applyBoxBlur(const std::vector<std::vector<RGB>>& image, int boxSize) {
@@ -281,7 +387,6 @@ double colorDistance(const RGB& color1, const RGB& color2) {
         (color1.blue - color2.blue) * (color1.blue - color2.blue)
     );
 }
-
 std::vector<std::vector<RGB>> applyBucketFill(const std::vector<std::vector<RGB>>& image, int threshold) {
     int height = image.size(), width = image[0].size();
     const RGB fillColor  = {0, 255, 0}; // Green color
