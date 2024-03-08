@@ -15,6 +15,7 @@ const std::string BoxBlurredOutputFilename = "out/box-blurred-image.bmp"; // out
 const std::string MotionBlurredOutputFilename = "out/motion-blurred-image.bmp"; // output file path
 const std::string BucketFillOutputFilename = "out/bucket-filled-image.bmp"; // output file path
 const std::string BilinearResizedOutputFilename = "out/bilinear-resized-image.bmp"; // output file path
+const std::string BicubicResizedOutputFilename = "out/bicubic-resized-image.bmp"; // output file path
 
 const double Sigma = 3.0; // Gaussian blur sigma value (blur radius, significant performance impact)
 const int BoxSize = 9; // box blur value (blur radius, must be odd)
@@ -22,8 +23,8 @@ const int MotionLength = 15; // define the length of the motion blur
 const int BucketFillThreshold = 10; // threshold for bucket fill
 const int BUCKET_FILL_X = 504; // x pixel location for starting bucket fill
 const int BUCKET_FILL_Y = 341; // y pixel location for starting bucket fill
-const int desiredWidth = 800; // Example desired width
-const int desiredHeight = 600;
+const int desiredWidth = 800; // desired resize width
+const int desiredHeight = 600; // desired resize height
 
 struct RGB {
     uint8_t blue, green, red; // RGB structure with the color order as blue, green, red to allow bottom up parsing present in .bmp
@@ -31,70 +32,80 @@ struct RGB {
 
 const double PI = 3.14159265358979323846; // PI constant
 
-// read bitmap images
+// Read bitmap images
 std::vector<std::vector<RGB>> readBmp(const std::string& filename);
-// write and resize images
+
+// Write and resize images
 void writeBmpResize(const std::string& filename, const std::vector<std::vector<RGB>>& image);
-// generate the Gaussian kernel
+
+// Generate the Gaussian kernel
 std::vector<std::vector<double>> generateGaussianKernel(double sigma);
-// apply Gaussian blur to the image
+
+// Apply Gaussian blur to the image
 std::vector<std::vector<RGB>> applyGaussianBlur(const std::vector<std::vector<RGB>>& image, const std::vector<std::vector<double>>& kernel);
-// save the new image data by copying the original file and replacing the pixel color data
+
+// Save the new image data by copying the original file and replacing the pixel color data
 void writeBmp(const std::string& filename, const std::vector<std::vector<RGB>>& image);
-// apply box blur to the image
+
+// Apply box blur to the image
 std::vector<std::vector<RGB>> applyBoxBlur(const std::vector<std::vector<RGB>>& image, int boxSize);
-// apply motion blur to the image
+
+// Apply motion blur to the image
 std::vector<std::vector<RGB>> applyMotionBlur(const std::vector<std::vector<RGB>>& image, int motionLength);
-// apply bucket fill to the other image
+
+// Apply bucket fill to the other image
 std::vector<std::vector<RGB>> applyBucketFill(const std::vector<std::vector<RGB>>& image, int threshold);
-// apply bilinear to the image
+
+// Apply bilinear resizing to the image
 std::vector<std::vector<RGB>> resizeBilinear(const std::vector<std::vector<RGB>>& image, int outputWidth, int outputHeight);
+
+// Function declaration for bicubic resizing
+std::vector<std::vector<RGB>> resizeBicubic(const std::vector<std::vector<RGB>>& image, int newWidth, int newHeight);
 
 int main() {
     auto start = std::chrono::high_resolution_clock::now(); // start timing
     std::cout << std::endl << "Parsing input image..." << std::endl;
     auto image = readBmp(Filename); // read the image from file
-    auto bucketFillImage = readBmp(Filename); // read the image for bucket fill
     auto end = std::chrono::high_resolution_clock::now(); // end timing
     std::chrono::duration<double> elapsed = end - start; // calculate elapsed time
     std::cout << "Time taken for parsing input image (" << (image[0].size() * image.size()) << "px): " << elapsed.count() << " seconds." << std::endl << std::endl;
 
-    // std::cout << "Applying Gaussian blur (Sigma=" << Sigma << ")..." << std::endl;
-    // start = std::chrono::high_resolution_clock::now(); // reset start time
-    // auto kernel = generateGaussianKernel(Sigma); // generate the Gaussian kernel (precompute the blur matrix values)
-    // auto blurredImage = applyGaussianBlur(image, kernel); // apply Gaussian blur to the image
-    // end = std::chrono::high_resolution_clock::now(); // end timing
-    // elapsed = end - start; // calculate elapsed time
-    // std::cout << "Time taken for applying Gaussian blur: " << elapsed.count() << " seconds." << std::endl;
-    // writeBmp(GaussianBlurredOutputFilename, blurredImage); // write the blurred image to a new file
-    // std::cout << "Saved gaussian blurred image to \"" << GaussianBlurredOutputFilename << "\"" << std::endl << std::endl;
+    std::cout << "Applying Gaussian blur (Sigma=" << Sigma << ")..." << std::endl;
+    start = std::chrono::high_resolution_clock::now(); // reset start time
+    auto kernel = generateGaussianKernel(Sigma); // generate the Gaussian kernel (precompute the blur matrix values)
+    auto blurredImage = applyGaussianBlur(image, kernel); // apply Gaussian blur to the image
+    end = std::chrono::high_resolution_clock::now(); // end timing
+    elapsed = end - start; // calculate elapsed time
+    std::cout << "Time taken for applying Gaussian blur: " << elapsed.count() << " seconds." << std::endl;
+    writeBmp(GaussianBlurredOutputFilename, blurredImage); // write the blurred image to a new file
+    std::cout << "Saved gaussian blurred image to \"" << GaussianBlurredOutputFilename << "\"" << std::endl << std::endl;
 
-    // std::cout << "Applying box blur (BoxSize=" << BoxSize << ")..." << std::endl;
-    // start = std::chrono::high_resolution_clock::now(); // reset start time
-    // auto boxBlurredImage = applyBoxBlur(image, BoxSize);
-    // end = std::chrono::high_resolution_clock::now(); // end timing
-    // elapsed = end - start; // calculate elapsed time
-    // std::cout << "Time taken for applying box blur: " << elapsed.count() << " seconds." << std::endl;
-    // writeBmp(BoxBlurredOutputFilename, boxBlurredImage); // write the blurred image to a new file
-    // std::cout << "Saved box-blurred image to \"" << BoxBlurredOutputFilename << "\"" << std::endl << std::endl;
+    std::cout << "Applying box blur (BoxSize=" << BoxSize << ")..." << std::endl;
+    start = std::chrono::high_resolution_clock::now(); // reset start time
+    auto boxBlurredImage = applyBoxBlur(image, BoxSize);
+    end = std::chrono::high_resolution_clock::now(); // end timing
+    elapsed = end - start; // calculate elapsed time
+    std::cout << "Time taken for applying box blur: " << elapsed.count() << " seconds." << std::endl;
+    writeBmp(BoxBlurredOutputFilename, boxBlurredImage); // write the blurred image to a new file
+    std::cout << "Saved box-blurred image to \"" << BoxBlurredOutputFilename << "\"" << std::endl << std::endl;
 
-    // std::cout << "Applying motion blur (MotionLength=" << MotionLength << ")..." << std::endl;
-    // start = std::chrono::high_resolution_clock::now(); // reset start time
-    // auto motionBlurredImage = applyMotionBlur(image, MotionLength);
-    // end = std::chrono::high_resolution_clock::now(); // end timing
-    // elapsed = end - start; // calculate elapsed time
-    // std::cout << "Time taken for applying motion blur: " << elapsed.count() << " seconds." << std::endl;
-    // writeBmp(MotionBlurredOutputFilename, motionBlurredImage); // write the motion-blurred image to a new file
-    // std::cout << "Saved motion-blurred image to \"" << MotionBlurredOutputFilename << "\"" << std::endl << std::endl;
+    std::cout << "Applying motion blur (MotionLength=" << MotionLength << ")..." << std::endl;
+    start = std::chrono::high_resolution_clock::now(); // reset start time
+    auto motionBlurredImage = applyMotionBlur(image, MotionLength);
+    end = std::chrono::high_resolution_clock::now(); // end timing
+    elapsed = end - start; // calculate elapsed time
+    std::cout << "Time taken for applying motion blur: " << elapsed.count() << " seconds." << std::endl;
+    writeBmp(MotionBlurredOutputFilename, motionBlurredImage); // write the motion-blurred image to a new file
+    std::cout << "Saved motion-blurred image to \"" << MotionBlurredOutputFilename << "\"" << std::endl << std::endl;
 
-    //std::cout << "Applying bucket fill (Threshold=" << BucketFillThreshold << ")..." << std::endl;
-    //start = std::chrono::high_resolution_clock::now(); // reset start time
-    //auto bucketFilledImage = applyBucketFill(bucketFillImage, BucketFillThreshold);
-    //end = std::chrono::high_resolution_clock::now(); // end timing
-    //elapsed = end - start; // calculate elapsed time
-    //std::cout << "Time taken for applying bucket fill: " << elapsed.count() << " seconds." << std::endl;
-    //writeBmp(BucketFillOutputFilename, bucketFilledImage); // write the bucket-filled image to a new file
-    //std::cout << "Saved bucket-filled image to \"" << BucketFillOutputFilename << "\"" << std::endl << std::endl;
+    std::cout << "Applying bucket fill (Threshold=" << BucketFillThreshold << ")..." << std::endl;
+    start = std::chrono::high_resolution_clock::now(); // reset start time
+    auto bucketFilledImage = applyBucketFill(image, BucketFillThreshold);
+    end = std::chrono::high_resolution_clock::now(); // end timing
+    elapsed = end - start; // calculate elapsed time
+    std::cout << "Time taken for applying bucket fill: " << elapsed.count() << " seconds." << std::endl;
+    writeBmp(BucketFillOutputFilename, bucketFilledImage); // write the bucket-filled image to a new file
+    std::cout << "Saved bucket-filled image to \"" << BucketFillOutputFilename << "\"" << std::endl << std::endl;
 
     std::cout << "Applying bilinear resizing (Output Size=" << desiredWidth << "x" << desiredHeight << ")..." << std::endl;
     start = std::chrono::high_resolution_clock::now(); // reset start time
@@ -105,8 +116,18 @@ int main() {
     writeBmpResize(BilinearResizedOutputFilename, bilinearResizedImage); // write the resized image to a new file
     std::cout << "Saved bilinear-resized image to \"" << BilinearResizedOutputFilename << "\"" << std::endl << std::endl;
 
+    std::cout << "Applying bicubic resizing (Output Size=" << desiredWidth << "x" << desiredHeight << ")..." << std::endl;
+    start = std::chrono::high_resolution_clock::now(); // Reset start time
+    auto bicubicResizedImage = resizeBicubic(image, desiredWidth, desiredHeight); // Use bicubic resizing
+    end = std::chrono::high_resolution_clock::now(); // End timing
+    elapsed = end - start; // Calculate elapsed time
+    std::cout << "Time taken for applying bicubic resizing: " << elapsed.count() << " seconds." << std::endl;
+    writeBmpResize(BicubicResizedOutputFilename, bicubicResizedImage); // Write the resized image to a new file
+    std::cout << "Saved bicubic-resized image to \"" << BicubicResizedOutputFilename << "\"" << std::endl << std::endl;
+
     return 0;
 }
+
 std::vector<std::vector<RGB>> resizeBilinear(const std::vector<std::vector<RGB>>& image, int newWidth, int newHeight) {
     int imgHeight = image.size();
     int imgWidth = image[0].size();
@@ -430,4 +451,61 @@ std::vector<std::vector<RGB>> applyBucketFill(const std::vector<std::vector<RGB>
     }
 
     return bucketFilledImage;
+}
+
+// Bicubic interpolation kernel (Catmull-Rom spline)
+double cubicInterpolate(double p[4], double x) {
+    return p[1] + 0.5 * x*(p[2] - p[0] + x*(2.0*p[0] - 5.0*p[1] + 4.0*p[2] - p[3] + x*(3.0*(p[1] - p[2]) + p[3] - p[0])));
+}
+
+double bicubicInterpolate(double arr[4][4], double x, double y) {
+    double colArr[4];
+    for (int i = 0; i < 4; i++) {
+        colArr[i] = cubicInterpolate(arr[i], y);
+    }
+    return cubicInterpolate(colArr, x);
+}
+
+std::vector<std::vector<RGB>> resizeBicubic(const std::vector<std::vector<RGB>>& image, int newWidth, int newHeight) {
+    int imgHeight = image.size();
+    int imgWidth = image[0].size();
+
+    std::vector<std::vector<RGB>> resized(newHeight, std::vector<RGB>(newWidth));
+
+    double xRatio = static_cast<double>(imgWidth) / newWidth;
+    double yRatio = static_cast<double>(imgHeight) / newHeight;
+
+    for (int i = 0; i < newHeight; ++i) {
+        for (int j = 0; j < newWidth; ++j) {
+            double x = (j + 0.5) * xRatio - 0.5;
+            double y = (i + 0.5) * yRatio - 0.5;
+
+            int xInt = int(x);
+            int yInt = int(y);
+
+            double xDiff = x - xInt;
+            double yDiff = y - yInt;
+
+            double redVals[4][4], greenVals[4][4], blueVals[4][4];
+
+            for (int m = -1; m <= 2; ++m) {
+                for (int n = -1; n <= 2; ++n) {
+                    int xN = std::clamp(xInt + n, 0, imgWidth - 1);
+                    int yM = std::clamp(yInt + m, 0, imgHeight - 1);
+
+                    // Access the pixel by value (or as a const reference if modification is not needed)
+                    const RGB& pixel = image[yM][xN];
+                    redVals[m + 1][n + 1] = pixel.red;
+                    greenVals[m + 1][n + 1] = pixel.green;
+                    blueVals[m + 1][n + 1] = pixel.blue;
+                }
+            }
+
+            resized[i][j].red = std::clamp(static_cast<int>(bicubicInterpolate(redVals, xDiff, yDiff)), 0, 255);
+            resized[i][j].green = std::clamp(static_cast<int>(bicubicInterpolate(greenVals, xDiff, yDiff)), 0, 255);
+            resized[i][j].blue = std::clamp(static_cast<int>(bicubicInterpolate(blueVals, xDiff, yDiff)), 0, 255);
+        }
+    }
+
+    return resized;
 }
