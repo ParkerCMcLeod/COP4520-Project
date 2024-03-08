@@ -5,15 +5,21 @@
 #include <iostream>
 #include <vector>
 #include <algorithm>
+#include <stack>
+#include <tuple>
 
 const std::string Filename = "in/small-image.bmp"; // file path
+const std::string BucketFillFilename = "in/bucket-fill-example.bmp"; // file path
+
 const std::string GaussianBlurredOutputFilename = "out/gaussian-blurred-image.bmp"; // output file path
 const std::string BoxBlurredOutputFilename = "out/box-blurred-image.bmp"; // output file path
 const std::string MotionBlurredOutputFilename = "out/motion-blurred-image.bmp"; // output file path
+const std::string BucketFillOutputFilename = "out/bucket-filled-image.bmp"; // output file path
 
 const double Sigma = 3.0; // Gaussian blur sigma value (blur radius, significant performance impact) 
 const int BoxSize = 9; // box blur value (blur radius, must be odd) 
 const int MotionLength = 15; // define the length of the motion blur
+const int BucketFillThreshold = 50; // threshold for bucket fill
 
 struct RGB {
     uint8_t blue, green, red; // RGB structure with the color order as blue, green, red to allow bottom up parsing present in .bmp
@@ -33,11 +39,14 @@ void writeBmp(const std::string& filename, const std::vector<std::vector<RGB>>& 
 std::vector<std::vector<RGB>> applyBoxBlur(const std::vector<std::vector<RGB>>& image, int boxSize);
 // apply motion blur to the image
 std::vector<std::vector<RGB>> applyMotionBlur(const std::vector<std::vector<RGB>>& image, int motionLength);
+// apply bucket fill to the other image
+std::vector<std::vector<RGB>> applyBucketFill(const std::vector<std::vector<RGB>>& image, int threshold);
 
 int main() {
     auto start = std::chrono::high_resolution_clock::now(); // start timing
     std::cout << std::endl << "Parsing input image..." << std::endl;
     auto image = readBmp(Filename); // read the image from file
+    auto bucketFillImage = readBmp(BucketFillFilename); // read the image for bucket fill
     auto end = std::chrono::high_resolution_clock::now(); // end timing
     std::chrono::duration<double> elapsed = end - start; // calculate elapsed time
     std::cout << "Time taken for parsing input image (" << (image[0].size() * image.size()) << "px): " << elapsed.count() << " seconds." << std::endl << std::endl;
@@ -69,6 +78,15 @@ int main() {
     std::cout << "Time taken for applying motion blur: " << elapsed.count() << " seconds." << std::endl;
     writeBmp(MotionBlurredOutputFilename, motionBlurredImage); // write the motion-blurred image to a new file
     std::cout << "Saved motion-blurred image to \"" << MotionBlurredOutputFilename << "\"" << std::endl << std::endl;
+
+    std::cout << "Applying bucket fill (Threshold=" << BucketFillThreshold << ")..." << std::endl;
+    start = std::chrono::high_resolution_clock::now(); // reset start time
+    auto bucketFilledImage = applyBucketFill(bucketFillImage, BucketFillThreshold);
+    end = std::chrono::high_resolution_clock::now(); // end timing
+    elapsed = end - start; // calculate elapsed time
+    std::cout << "Time taken for applying bucket fill: " << elapsed.count() << " seconds." << std::endl;
+    writeBmp(BucketFillOutputFilename, bucketFilledImage); // write the bucket-filled image to a new file
+    std::cout << "Saved bucket-filled image to \"" << BucketFillOutputFilename << "\"" << std::endl << std::endl;
 
     return 0;
 }
@@ -252,4 +270,52 @@ std::vector<std::vector<RGB>> applyMotionBlur(const std::vector<std::vector<RGB>
     }
 
     return blurredImage; // return the image with applied motion blur
+}
+
+// Improved applyBucketFill function
+std::vector<std::vector<RGB>> applyBucketFill(const std::vector<std::vector<RGB>>& image, int threshold) {
+
+    int height = image.size(), width = image[0].size();
+    const RGB fillColor  = {0, 255, 0}; // Green color
+    int seedX = width / 2, seedY = height / 2; // Seed point
+
+    std::vector<std::vector<RGB>> bucketFilledImage = image;
+    std::vector<std::vector<bool>> visited(height, std::vector<bool>(width, false));
+
+    // Check if seed point is within the image
+    if (seedX < 0 || seedX >= width || seedY < 0 || seedY >= height) {
+        std::cerr << "Seed point is outside the image bounds." << std::endl;
+        return bucketFilledImage; // Return the original image if seed point is invalid
+    }
+
+    RGB targetColor = image[seedY][seedX];
+
+    // Stack for iterative DFS
+    std::stack<std::pair<int, int>> stack;
+    stack.push({seedX, seedY});
+
+    while (!stack.empty()) {
+        int x, y;
+        std::tie(x, y) = stack.top();
+        stack.pop();
+
+        // Check bounds and if the pixel has already been visited
+        if (x < 0 || x >= width || y < 0 || y >= height || visited[y][x]) continue;
+
+        // Check color threshold
+        if (std::abs(image[y][x].red - targetColor.red) <= threshold &&
+            std::abs(image[y][x].green - targetColor.green) <= threshold &&
+            std::abs(image[y][x].blue - targetColor.blue) <= threshold) {
+            bucketFilledImage[y][x] = fillColor; // Apply fill color
+            visited[y][x] = true; // Mark as visited
+
+            // Push neighboring pixels to stack
+            stack.push({x + 1, y});
+            stack.push({x - 1, y});
+            stack.push({x, y + 1});
+            stack.push({x, y - 1});
+        }
+    }
+
+    return bucketFilledImage;
 }
