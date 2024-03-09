@@ -15,6 +15,8 @@ const std::string MotionBlurredOutputFilename = "out/motion-blurred-image.bmp"; 
 const std::string BucketFillOutputFilename = "out/bucket-filled-image.bmp"; // Output file path
 const std::string BilinearResizedOutputFilename = "out/bilinear-resized-image.bmp"; // Output file path
 const std::string BicubicResizedOutputFilename = "out/bicubic-resized-image.bmp"; // Output file path
+const std::string NearestNeighborResizedOutputFilename = "out/nearestNeighbor-resized-image.bmp"; // Output file path
+
 
 constexpr double Sigma = 3.0; // Gaussian blur sigma value (blur radius, significant performance impact)
 constexpr int BoxSize = 9; // Box blur value (blur radius, must be odd)
@@ -52,6 +54,9 @@ std::vector<std::vector<RGB>> applyBucketFill(const std::vector<std::vector<RGB>
 std::vector<std::vector<RGB>> resizeBilinear(const std::vector<std::vector<RGB>>& image, int outputWidth, int outputHeight);
 // Function declaration for bicubic resizing
 std::vector<std::vector<RGB>> resizeBicubic(const std::vector<std::vector<RGB>>& image, int newWidth, int newHeight);
+// Function declaration for nearest neighbor resizing
+std::vector<std::vector<RGB>> nearestNeighborResize(const std::vector<std::vector<RGB>>& image, int newWidth, int newHeight);
+
 
 int main() {
     auto start = std::chrono::high_resolution_clock::now(); // Start timing
@@ -115,6 +120,15 @@ int main() {
     std::cout << "Time taken for applying bicubic resizing: " << elapsed.count() << " seconds." << std::endl;
     writeBmpResize(BicubicResizedOutputFilename, bicubicResizedImage); // Write the resized image to a new file
     std::cout << "Saved bicubic-resized image to \"" << BicubicResizedOutputFilename << "\"" << std::endl << std::endl;
+
+    std::cout << "Applying nearest neighbor resizing (Output Size=" << desiredWidth << "x" << desiredHeight << ")..." << std::endl;
+    start = std::chrono::high_resolution_clock::now(); // Reset start time
+    auto nearestNeighborResizedImage = nearestNeighborResize(image, desiredWidth, desiredHeight); // Use nearest neighbor resizing
+    end = std::chrono::high_resolution_clock::now(); // End timing
+    elapsed = end - start; // Calculate elapsed time
+    std::cout << "Time taken for applying nearest neighbor resizing: " << elapsed.count() << " seconds." << std::endl;
+    writeBmpResize(NearestNeighborResizedOutputFilename, nearestNeighborResizedImage); // Write the resized image to a new file
+    std::cout << "Saved nearestNeighbor-resized image to \"" << NearestNeighborResizedOutputFilename << "\"" << std::endl << std::endl;
 
     return 0;
 }
@@ -508,4 +522,25 @@ std::vector<std::vector<RGB>> resizeBilinear(const std::vector<std::vector<RGB>>
     }
 
     return resized;
+}
+
+std::vector<std::vector<RGB>> nearestNeighborResize(const std::vector<std::vector<RGB>>& image, int newWidth, int newHeight) {
+        int imageWidth = image.size();
+        int imageHeight = image[0].size();
+
+        double widthScale = (double)newWidth / imageWidth;
+        double heightScale = (double)newHeight / imageHeight;
+        
+        std::vector<std::vector<RGB>> resizedImage(newWidth, std::vector<RGB>(newHeight));
+
+        for (int x = 0; x < newWidth; x++) {
+            for (int y = 0; y < newHeight; y++) {
+                int originalX = (int)(x / widthScale);
+                int originalY = (int)(y / heightScale);
+
+                resizedImage[x][y] = image[originalX][originalY];
+            }
+        }
+
+        return resizedImage;
 }
