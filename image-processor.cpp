@@ -3,10 +3,12 @@
 #include <cmath>
 #include <cstdint>
 #include <fstream>
+#include <functional>
 #include <iostream>
 #include <stack>
 #include <string>
 #include <tuple>
+#include <unordered_map>
 #include <vector>
 
 #ifdef _WIN32
@@ -16,16 +18,16 @@
 #include <sys/types.h>
 #endif
 
-const std::string InputFilename = "in/small-image.bmp"; // Input
-const std::string GaussianBlurredOutputFilename = "out/gaussian-blurred-image.bmp"; // Output
-const std::string BoxBlurredOutputFilename = "out/box-blurred-image.bmp"; // Output
-const std::string MotionBlurredOutputFilename = "out/motion-blurred-image.bmp"; // Output
-const std::string BucketFillOutputFilename = "out/bucket-filled-image.bmp"; // Output
-const std::string BilinearResizedOutputFilename = "out/bilinear-resized-image.bmp"; // Output
-const std::string BicubicResizedOutputFilename = "out/bicubic-resized-image.bmp"; // Output
-const std::string NearestNeighborResizedOutputFilename = "out/nearest-neighbor-resized-image.bmp"; // Output
+const std::string InputFilename = "in/smallImage.bmp"; // Input
+const std::string GaussianBlurredOutputFilename = "out/gaussianBlur.bmp"; // Output
+const std::string BoxBlurredOutputFilename = "out/boxBlur.bmp"; // Output
+const std::string MotionBlurredOutputFilename = "out/motionBlur.bmp"; // Output
+const std::string BucketFillOutputFilename = "out/bucketFill.bmp"; // Output
+const std::string BilinearResizedOutputFilename = "out/bilinearResize.bmp"; // Output
+const std::string BicubicResizedOutputFilename = "out/bicubicResize.bmp"; // Output
+const std::string NearestNeighborResizedOutputFilename = "out/nearestNeighborResize.bmp"; // Output
 
-constexpr double Sigma = 1.0; // Gaussian blur sigma value (blur radius, significant performance impact)
+constexpr double Sigma = 3.0; // Gaussian blur sigma value (blur radius, significant performance impact)
 constexpr int BoxSize = 9; // Box blur value (blur radius, must be odd)
 constexpr int MotionLength = 15; // Define the length of the motion blur
 constexpr int BucketFillThreshold = 10; // Threshold for bucket fill
@@ -50,7 +52,7 @@ void gaussianBlurHelper(std::vector<std::vector<RGB>> image);
 // Helper function for timing and implementing the box blur function
 void boxBlurHelper(std::vector<std::vector<RGB>> image);
 // Helper function for timing and implementing the motion blur function
-void montionBlurHelper(std::vector<std::vector<RGB>> image);
+void motionBlurHelper(std::vector<std::vector<RGB>> image);
 // Helper function for timing and implementing the bucket fill function
 void bucketFillHelper(std::vector<std::vector<RGB>> image);
 // Helper function for timing and implementing the bilinear resize function
@@ -82,17 +84,34 @@ std::vector<std::vector<RGB>> resizeBicubic(const std::vector<std::vector<RGB>>&
 // Apply nearest neighbor resizing to the image
 std::vector<std::vector<RGB>> nearestNeighborResize(const std::vector<std::vector<RGB>>& image, int newWidth, int newHeight);
 
-int main() { 
+int main(int argc, char* argv[]) {
     createOutFolder(); // Create an out folder
-
     auto image = parseImageHelper(); // Helper function for parsing image  
-    gaussianBlurHelper(image); // Helper function for timing and implementing the gaussian blur function  
-    boxBlurHelper(image); // Helper function for timing and implementing the box blur function  
-    montionBlurHelper(image); // Helper function for timing and implementing the motion blur function  
-    bucketFillHelper(image); // Helper function for timing and implementing the bucket fill function  
-    bilinearResizeHelper(image); // Helper function for timing and implementing the bilinear resize function  
-    bicubicResizeHelper(image); // Helper function for timing and implementing the bicubic resize function  
-    nearestNeighborResizeHelper(image); // Helper function for timing and implementing the nearest neighbor resize function 
+
+    std::unordered_map<std::string, std::function<void()>> functions = {
+        {"gaussianBlur", [&]() { gaussianBlurHelper(image); }}, // Helper function for timing and implementing the gaussian blur function  
+        {"boxBlur", [&]() { boxBlurHelper(image); }}, // Helper function for timing and implementing the box blur function  
+        {"motionBlur", [&]() { motionBlurHelper(image); }}, // Helper function for timing and implementing the motion blur function  
+        {"bucketFill", [&]() { bucketFillHelper(image); }}, // Helper function for timing and implementing the bucket fill function  
+        {"bilinearResize", [&]() { bilinearResizeHelper(image); }}, // Helper function for timing and implementing the bilinear resize function  
+        {"bicubicResize", [&]() { bicubicResizeHelper(image); }}, // Helper function for timing and implementing the bicubic resize function  
+        {"nearestNeighborResize", [&]() { nearestNeighborResizeHelper(image); }} // Helper function for timing and implementing the nearest neighbor resize function 
+    };
+
+    if (argc > 1) {
+        std::string action(argv[1]);
+        if (functions.find(action) != functions.end()) {
+            functions[action]();
+        } else {
+            std::cerr << "Unknown function: " << action << std::endl;
+            return 1;
+        }
+    } else {
+        // If no specific function, run all functions
+        for (auto& func : functions) {
+            func.second();
+        }
+    }
 
     return 0;
 }
@@ -163,7 +182,7 @@ void boxBlurHelper(std::vector<std::vector<RGB>> image) {
 }
 
 // Helper function for timing and implementing the motion blur function
-void montionBlurHelper(std::vector<std::vector<RGB>> image) {
+void motionBlurHelper(std::vector<std::vector<RGB>> image) {
     std::cout << "Applying motion blur (MotionLength=" << MotionLength << ")..." << std::endl;
     auto start = std::chrono::high_resolution_clock::now(); // Reset start time
     auto motionBlurredImage = applyMotionBlur(image, MotionLength);
