@@ -9,6 +9,13 @@
 #include <tuple>
 #include <vector>
 
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <sys/stat.h>
+#include <sys/types.h>
+#endif
+
 const std::string InputFilename = "in/small-image.bmp"; // Input
 const std::string GaussianBlurredOutputFilename = "out/gaussian-blurred-image.bmp"; // Output
 const std::string BoxBlurredOutputFilename = "out/box-blurred-image.bmp"; // Output
@@ -34,6 +41,8 @@ struct RGB {
     uint8_t blue, green, red; 
 };
 
+// Create an out folder
+void createOutFolder();
 // Helper function for parsing image
 std::vector<std::vector<RGB>> parseImageHelper();
 // Helper function for timing and implementing the gaussian blur function
@@ -74,6 +83,8 @@ std::vector<std::vector<RGB>> resizeBicubic(const std::vector<std::vector<RGB>>&
 std::vector<std::vector<RGB>> nearestNeighborResize(const std::vector<std::vector<RGB>>& image, int newWidth, int newHeight);
 
 int main() { 
+    createOutFolder(); // Create an out folder
+
     auto image = parseImageHelper(); // Helper function for parsing image  
     gaussianBlurHelper(image); // Helper function for timing and implementing the gaussian blur function  
     boxBlurHelper(image); // Helper function for timing and implementing the box blur function  
@@ -84,6 +95,34 @@ int main() {
     nearestNeighborResizeHelper(image); // Helper function for timing and implementing the nearest neighbor resize function 
 
     return 0;
+}
+
+// Create an out folder
+void createOutFolder() {
+    const char* dir = "out";
+
+#ifdef _WIN32
+    if (!CreateDirectory(dir, NULL)) {
+        if (GetLastError() == ERROR_ALREADY_EXISTS) {
+            std::cout << "Directory already exists.\n";
+        } else {
+            std::cout << "Failed to create directory.\n";
+        }
+    } else {
+        std::cout << "Directory created successfully.\n";
+    }
+#else
+    struct stat st;
+    if (stat(dir, &st) != 0) {
+        if (mkdir(dir, 0755) == 0) {
+            std::cout << "Directory created successfully.\n";
+        } else {
+            perror("Failed to create directory");
+        }
+    } else {
+        std::cout << "Directory already exists.\n";
+    }
+#endif
 }
 
 // Helper function for parsing image
@@ -297,7 +336,8 @@ void writeBmpResize(const std::string& filename, const std::vector<std::vector<R
         return;
     }
 
-    int width = image[0].size(), height = image.size();
+    int width = image[0].size();
+    int height = image.size();
     int rowPadding = (4 - (width * 3) % 4) % 4;
     int fileSize = 54 + (width*3 + rowPadding) * height; // Header size (54 bytes) + pixel data
 
