@@ -26,9 +26,6 @@ SOURCES=image-processor.cpp
 # Object files
 OBJECTS=$(SOURCES:.cpp=.o)
 
-# ImGui directory
-IMGUI_DIR=./libs/imgui
-
 # Install Python dependencies
 install-python-deps:
 	$(PIP) install pillow
@@ -44,18 +41,22 @@ motionLength ?= 15
 bucketFillThreshold ?= 10
 bucketFillX ?= 504
 bucketFillY ?= 341
-resizeWidth ?= 800
-resizeHeight ?= 600
+resizeWidthBilinear ?= 100
+resizeHeightBilinear ?= 100
+resizeWidthBicubic ?= 100
+resizeHeightBicubic ?= 100
+resizeWidthNearestNeighbor ?= 100
+resizeHeightNearestNeighbor ?= 100
 inputImageSize ?= small
 function ?= all
 
 # Rule for running the executable with parameters
 run: $(TARGET)
-	./$(call FIXPATH,$(TARGET)) $(sigma) $(boxSize) $(motionLength) $(bucketFillThreshold) $(bucketFillX) $(bucketFillY) $(resizeWidth) $(resizeHeight) $(inputImageSize) $(function)
+	./$(call FIXPATH,$(TARGET)) $(sigma) $(boxSize) $(motionLength) $(bucketFillThreshold) $(bucketFillX) $(bucketFillY) $(resizeWidthBilinear) $(resizeHeightBilinear) $(resizeWidthBicubic) $(resizeHeightBicubic) $(resizeWidthNearestNeighbor) $(resizeHeightNearestNeighbor) $(inputImageSize) $(function)
 
 # Rule for cleaning up generated files
 clean:
 	$(RM) $(call FIXPATH,$(TARGET)) $(call FIXPATH,$(OBJECTS))
 
 # Phony targets
-.PHONY: run clean check-imgui install-python-deps
+.PHONY: run clean install-python-deps

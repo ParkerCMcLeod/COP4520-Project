@@ -33,8 +33,12 @@ int motionLength = 15; // Define the length of the motion blur
 int bucketFillThreshold = 10; // Threshold for bucket fill
 int bucketFillX = 504; // X pixel location for starting bucket fill
 int bucketFillY = 341; // Y pixel location for starting bucket fill
-int resizeWidth = 800; // Desired resize width
-int resizeHeight = 600; // Desired resize height
+int resizeWidthBilinear = 100; // Desired resize width
+int resizeHeightBilinear = 100; // Desired resize height
+int resizeWidthBicubic = 100; // Desired resize width
+int resizeHeightBicubic = 100; // Desired resize height
+int resizeWidthNearestNeighbor = 100; // Desired resize width
+int resizeHeightNearestNeighbor = 100; // Desired resize height
 std::string inputImageSize = "small"; // Which input image to use (small medium large)
 std::string function = "all"; // Which function to run (all gaussianBlur boxBlur motionBlur bucketFill bilinearResize bicubicResize nearestNeighborResize)
 
@@ -87,8 +91,8 @@ std::vector<std::vector<RGB>> resizeBicubic(const std::vector<std::vector<RGB>>&
 std::vector<std::vector<RGB>> nearestNeighborResize(const std::vector<std::vector<RGB>>& image, int newWidth, int newHeight);
 
 int main(int argc, char* argv[]) {
-    if (argc < 11) {
-        std::cerr << "Usage: " << argv[0] << " <sigma> <boxSize> <motionLength> <bucketFillThreshold> <bucketFillX> <bucketFillY> <resizeWidth> <resizeHeight> <inputImageSize> <function>" << std::endl;
+    if (argc < 15) {
+        std::cerr << "Usage: " << argv[0] << " <sigma> <boxSize> <motionLength> <bucketFillThreshold> <bucketFillX> <bucketFillY> resizeWidthBilinear <resizeHeightBilinear> <resizeWidthBicubic> <resizeHeightBicubic> <resizeWidthNearestNeighbor> <resizeHeightNearestNeighbor> <inputImageSize> <function>" << std::endl;
         return 1;
     }
 
@@ -99,10 +103,14 @@ int main(int argc, char* argv[]) {
     bucketFillThreshold = std::atoi(argv[4]);
     bucketFillX = std::atoi(argv[5]);
     bucketFillY = std::atoi(argv[6]);
-    resizeWidth = std::atoi(argv[7]);
-    resizeHeight = std::atoi(argv[8]);
-    inputImageSize = argv[9];
-    function = argv[10];
+    resizeWidthBilinear = std::atoi(argv[7]);
+    resizeHeightBilinear = std::atoi(argv[8]);
+    resizeWidthBicubic = std::atoi(argv[9]);
+    resizeHeightBicubic = std::atoi(argv[10]);
+    resizeWidthNearestNeighbor = std::atoi(argv[11]);
+    resizeHeightNearestNeighbor = std::atoi(argv[12]);
+    inputImageSize = argv[13];
+    function = argv[14];
 
     if (inputImageSize == "small") {
         InputFilename = "in/smallImage.bmp";
@@ -174,100 +182,92 @@ void createOutFolder() {
 #endif
 }
 
-// Helper function for parsing image
 std::vector<std::vector<RGB>> parseImageHelper() {
-    auto start = std::chrono::high_resolution_clock::now(); // Start timing
     std::cout << std::endl << "Parsing input image..." << std::endl;
-    auto image = readBmp(InputFilename); // Read and process the image from file
-    auto end = std::chrono::high_resolution_clock::now(); // End timing
-    std::chrono::duration<double> elapsed = end - start; // Calculate elapsed time
-    std::cout << "Time taken for parsing input image (" << (image[0].size() * image.size()) << "px): " << elapsed.count() << " seconds." << std::endl << std::endl;
+    auto start = std::chrono::high_resolution_clock::now();
+    auto image = readBmp(InputFilename);
+    auto end = std::chrono::high_resolution_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Time taken for parsing input image (" << (image[0].size() * image.size()) << "px): " << elapsed.count() << " milliseconds." << std::endl << std::endl;
 
     return image;
 }
 
-// Helper function for timing and implementing the gaussian blur function
 void gaussianBlurHelper(std::vector<std::vector<RGB>> image) {
     std::cout << "Applying Gaussian blur (sigma=" << sigma << ")..." << std::endl;
-    auto start = std::chrono::high_resolution_clock::now(); // Reset start time
-    auto kernel = generateGaussianKernel(sigma); // Generate the Gaussian kernel (precompute the blur matrix values)
-    auto blurredImage = applyGaussianBlur(image, kernel); // Apply Gaussian blur to the image
-    auto end = std::chrono::high_resolution_clock::now(); // End timing
-    auto elapsed = end - start; // Calculate elapsed time
-    std::cout << "Time taken for applying Gaussian blur: " << elapsed.count() << " seconds." << std::endl;
-    writeBmp(GaussianBlurredOutputFilename, blurredImage); // Write the blurred image to a new file
+    auto start = std::chrono::high_resolution_clock::now();
+    auto kernel = generateGaussianKernel(sigma);
+    auto blurredImage = applyGaussianBlur(image, kernel);
+    auto end = std::chrono::high_resolution_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Time taken for applying Gaussian blur: " << elapsed.count() << " milliseconds." << std::endl;
+    writeBmp(GaussianBlurredOutputFilename, blurredImage);
     std::cout << "Saved gaussian blurred image to \"" << GaussianBlurredOutputFilename << "\"" << std::endl << std::endl;
 }
 
-// Helper function for timing and implementing the box blur function
 void boxBlurHelper(std::vector<std::vector<RGB>> image) {
     std::cout << "Applying box blur (boxSize=" << boxSize << ")..." << std::endl;
-    auto start = std::chrono::high_resolution_clock::now(); // Reset start time
+    auto start = std::chrono::high_resolution_clock::now();
     auto boxBlurredImage = applyBoxBlur(image, boxSize);
-    auto end = std::chrono::high_resolution_clock::now(); // End timing
-    auto elapsed = end - start; // Calculate elapsed time
-    std::cout << "Time taken for applying box blur: " << elapsed.count() << " seconds." << std::endl;
-    writeBmp(BoxBlurredOutputFilename, boxBlurredImage); // Write the blurred image to a new file
+    auto end = std::chrono::high_resolution_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Time taken for applying box blur: " << elapsed.count() << " milliseconds." << std::endl;
+    writeBmp(BoxBlurredOutputFilename, boxBlurredImage);
     std::cout << "Saved box-blurred image to \"" << BoxBlurredOutputFilename << "\"" << std::endl << std::endl;
 }
 
-// Helper function for timing and implementing the motion blur function
 void motionBlurHelper(std::vector<std::vector<RGB>> image) {
     std::cout << "Applying motion blur (motionLength=" << motionLength << ")..." << std::endl;
-    auto start = std::chrono::high_resolution_clock::now(); // Reset start time
+    auto start = std::chrono::high_resolution_clock::now();
     auto motionBlurredImage = applyMotionBlur(image, motionLength);
-    auto end = std::chrono::high_resolution_clock::now(); // End timing
-    auto elapsed = end - start; // Calculate elapsed time
-    std::cout << "Time taken for applying motion blur: " << elapsed.count() << " seconds." << std::endl;
-    writeBmp(MotionBlurredOutputFilename, motionBlurredImage); // Write the motion-blurred image to a new file
+    auto end = std::chrono::high_resolution_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Time taken for applying motion blur: " << elapsed.count() << " milliseconds." << std::endl;
+    writeBmp(MotionBlurredOutputFilename, motionBlurredImage);
     std::cout << "Saved motion-blurred image to \"" << MotionBlurredOutputFilename << "\"" << std::endl << std::endl;
 }
 
-// Helper function for timing and implementing the bucket fill function
 void bucketFillHelper(std::vector<std::vector<RGB>> image) {
     std::cout << "Applying bucket fill (Threshold=" << bucketFillThreshold << ")..." << std::endl;
-    auto start = std::chrono::high_resolution_clock::now(); // Reset start time
+    auto start = std::chrono::high_resolution_clock::now();
     auto bucketFilledImage = applyBucketFill(image, bucketFillThreshold);
-    auto end = std::chrono::high_resolution_clock::now(); // End timing
-    auto elapsed = end - start; // Calculate elapsed time
-    std::cout << "Time taken for applying bucket fill: " << elapsed.count() << " seconds." << std::endl;
-    writeBmp(BucketFillOutputFilename, bucketFilledImage); // Write the bucket-filled image to a new file
+    auto end = std::chrono::high_resolution_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Time taken for applying bucket fill: " << elapsed.count() << " milliseconds." << std::endl;
+    writeBmp(BucketFillOutputFilename, bucketFilledImage);
     std::cout << "Saved bucket-filled image to \"" << BucketFillOutputFilename << "\"" << std::endl << std::endl;
 }
 
-// Helper function for timing and implementing the bilinear resize function
 void bilinearResizeHelper(std::vector<std::vector<RGB>> image) {
-    std::cout << "Applying bilinear resizing (Output Size=" << resizeWidth << "x" << resizeHeight << ")..." << std::endl;
-    auto start = std::chrono::high_resolution_clock::now(); // Reset start time
-    auto bilinearResizedImage = resizeBilinear(image, resizeWidth, resizeHeight);
-    auto end = std::chrono::high_resolution_clock::now(); // End timing
-    auto elapsed = end - start; // Calculate elapsed time
-    std::cout << "Time taken for applying bilinear resizing: " << elapsed.count() << " seconds." << std::endl;
-    writeBmpResize(BilinearResizedOutputFilename, bilinearResizedImage, resizeWidth, resizeHeight); // Write the resized image to a new file
+    std::cout << "Applying bilinear resizing (Output Size=" << resizeWidthBilinear << "x" << resizeHeightBilinear << ")..." << std::endl;
+    auto start = std::chrono::high_resolution_clock::now();
+    auto bilinearResizedImage = resizeBilinear(image, resizeWidthBilinear, resizeHeightBilinear);
+    auto end = std::chrono::high_resolution_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Time taken for applying bilinear resizing: " << elapsed.count() << " milliseconds." << std::endl;
+    writeBmpResize(BilinearResizedOutputFilename, bilinearResizedImage, resizeWidthBilinear, resizeHeightBilinear);
     std::cout << "Saved bilinear-resized image to \"" << BilinearResizedOutputFilename << "\"" << std::endl << std::endl;
 }
 
-// Helper function for timing and implementing the bicubic resize function
 void bicubicResizeHelper(std::vector<std::vector<RGB>> image) {
-    std::cout << "Applying bicubic resizing (Output Size=" << resizeWidth << "x" << resizeHeight << ")..." << std::endl;
-    auto start = std::chrono::high_resolution_clock::now(); // Reset start time
-    auto bicubicResizedImage = resizeBicubic(image, resizeWidth, resizeHeight); // Use bicubic resizing
-    auto end = std::chrono::high_resolution_clock::now(); // End timing
-    auto elapsed = end - start; // Calculate elapsed time
-    std::cout << "Time taken for applying bicubic resizing: " << elapsed.count() << " seconds." << std::endl;
-    writeBmpResize(BicubicResizedOutputFilename, bicubicResizedImage, resizeWidth, resizeHeight); // Write the resized image to a new file
+    std::cout << "Applying bicubic resizing (Output Size=" << resizeWidthBicubic << "x" << resizeHeightBicubic << ")..." << std::endl;
+    auto start = std::chrono::high_resolution_clock::now();
+    auto bicubicResizedImage = resizeBicubic(image, resizeWidthBicubic, resizeHeightBicubic);
+    auto end = std::chrono::high_resolution_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Time taken for applying bicubic resizing: " << elapsed.count() << " milliseconds." << std::endl;
+    writeBmpResize(BicubicResizedOutputFilename, bicubicResizedImage, resizeWidthBicubic, resizeHeightBicubic);
     std::cout << "Saved bicubic-resized image to \"" << BicubicResizedOutputFilename << "\"" << std::endl << std::endl;
 }
 
-// Helper function for timing and implementing the nearest neighbor resize function
 void nearestNeighborResizeHelper(std::vector<std::vector<RGB>> image) {
-    std::cout << "Applying nearest neighbor resizing (Output Size=" << resizeWidth << "x" << resizeHeight << ")..." << std::endl;
-    auto start = std::chrono::high_resolution_clock::now(); // Reset start time
-    auto nearestNeighborResizedImage = nearestNeighborResize(image, resizeWidth, resizeHeight); // Use nearest neighbor resizing
-    auto end = std::chrono::high_resolution_clock::now(); // End timing
-    auto elapsed = end - start; // Calculate elapsed time
-    std::cout << "Time taken for applying nearest neighbor resizing: " << elapsed.count() << " seconds." << std::endl;
-    writeBmpResize(NearestNeighborResizedOutputFilename, nearestNeighborResizedImage, resizeWidth, resizeHeight); // Write the resized image to a new file
+    std::cout << "Applying nearest neighbor resizing (Output Size=" << resizeWidthNearestNeighbor << "x" << resizeHeightNearestNeighbor << ")..." << std::endl;
+    auto start = std::chrono::high_resolution_clock::now();
+    auto nearestNeighborResizedImage = nearestNeighborResize(image, resizeWidthNearestNeighbor, resizeHeightNearestNeighbor);
+    auto end = std::chrono::high_resolution_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Time taken for applying nearest neighbor resizing: " << elapsed.count() << " milliseconds." << std::endl;
+    writeBmpResize(NearestNeighborResizedOutputFilename, nearestNeighborResizedImage, resizeWidthNearestNeighbor, resizeHeightNearestNeighbor);
     std::cout << "Saved nearestNeighbor-resized image to \"" << NearestNeighborResizedOutputFilename << "\"" << std::endl << std::endl;
 }
 
