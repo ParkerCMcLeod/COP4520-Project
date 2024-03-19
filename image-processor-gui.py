@@ -12,11 +12,14 @@ input_image_path = "in/smallImage.bmp"
 input_photo = None
 input_label = output_label = None 
 
-def bmp_to_png(bmp_path, max_size=(400, 300)):
+def bmp_to_png(bmp_path):
+    new_size=(201, 300)
     png_path = bmp_path.replace('.bmp', '.png')
     with Image.open(bmp_path) as img:
-        img.thumbnail(max_size, Image.LANCZOS)
+        img = img.resize(new_size, Image.LANCZOS)
         img.save(png_path, 'PNG')
+    return png_path
+
     return png_path
 
 def update_status(message):
