@@ -1,31 +1,31 @@
-#include <cstdint>
-#include <cmath>
+#include <algorithm>
 #include <chrono>
+#include <cmath>
+#include <cstdint>
 #include <fstream>
 #include <iostream>
-#include <vector>
-#include <algorithm>
 #include <stack>
+#include <string>
 #include <tuple>
+#include <vector>
 
-const std::string InputFilename = "in/small-image.bmp"; // File path
-const std::string GaussianBlurredOutputFilename = "out/gaussian-blurred-image.bmp"; // Output file path
-const std::string BoxBlurredOutputFilename = "out/box-blurred-image.bmp"; // Output file path
-const std::string MotionBlurredOutputFilename = "out/motion-blurred-image.bmp"; // Output file path
-const std::string BucketFillOutputFilename = "out/bucket-filled-image.bmp"; // Output file path
-const std::string BilinearResizedOutputFilename = "out/bilinear-resized-image.bmp"; // Output file path
-const std::string BicubicResizedOutputFilename = "out/bicubic-resized-image.bmp"; // Output file path
-const std::string NearestNeighborResizedOutputFilename = "out/nearestNeighbor-resized-image.bmp"; // Output file path
+const std::string InputFilename = "in/small-image.bmp"; // Input
+const std::string GaussianBlurredOutputFilename = "out/gaussian-blurred-image.bmp"; // Output
+const std::string BoxBlurredOutputFilename = "out/box-blurred-image.bmp"; // Output
+const std::string MotionBlurredOutputFilename = "out/motion-blurred-image.bmp"; // Output
+const std::string BucketFillOutputFilename = "out/bucket-filled-image.bmp"; // Output
+const std::string BilinearResizedOutputFilename = "out/bilinear-resized-image.bmp"; // Output
+const std::string BicubicResizedOutputFilename = "out/bicubic-resized-image.bmp"; // Output
+const std::string NearestNeighborResizedOutputFilename = "out/nearest-neighbor-resized-image.bmp"; // Output
 
-
-constexpr double Sigma = 3.0; // Gaussian blur sigma value (blur radius, significant performance impact)
+constexpr double Sigma = 1.0; // Gaussian blur sigma value (blur radius, significant performance impact)
 constexpr int BoxSize = 9; // Box blur value (blur radius, must be odd)
 constexpr int MotionLength = 15; // Define the length of the motion blur
 constexpr int BucketFillThreshold = 10; // Threshold for bucket fill
-constexpr int BUCKET_FILL_X = 504; // X pixel location for starting bucket fill
-constexpr int BUCKET_FILL_Y = 341; // Y pixel location for starting bucket fill
-constexpr int desiredWidth = 800; // Desired resize width
-constexpr int desiredHeight = 600; // Desired resize height
+constexpr int bucketFillX = 504; // X pixel location for starting bucket fill
+constexpr int bucketFillY = 341; // Y pixel location for starting bucket fill
+constexpr int resizeWidth = 800; // Desired resize width
+constexpr int resizeHeight = 600; // Desired resize height
 
 constexpr double PI = 3.14159265358979323846; // PI constant
 
@@ -34,11 +34,27 @@ struct RGB {
     uint8_t blue, green, red; 
 };
 
-// Read bitmap images
+// Helper function for parsing image
+std::vector<std::vector<RGB>> parseImageHelper();
+// Helper function for timing and implementing the gaussian blur function
+void gaussianBlurHelper(std::vector<std::vector<RGB>> image);
+// Helper function for timing and implementing the box blur function
+void boxBlurHelper(std::vector<std::vector<RGB>> image);
+// Helper function for timing and implementing the motion blur function
+void montionBlurHelper(std::vector<std::vector<RGB>> image);
+// Helper function for timing and implementing the bucket fill function
+void bucketFillHelper(std::vector<std::vector<RGB>> image);
+// Helper function for timing and implementing the bilinear resize function
+void bilinearResizeHelper(std::vector<std::vector<RGB>> image);
+// Helper function for timing and implementing the bicubic resize function
+void bicubicResizeHelper(std::vector<std::vector<RGB>> image);
+// Helper function for timing and implementing the nearest neighbor resize function
+void nearestNeighborResizeHelper(std::vector<std::vector<RGB>> image);
+// Read and processes bitmap images
 std::vector<std::vector<RGB>> readBmp(const std::string& filename);
 // Write and resize images
-void writeBmpResize(const std::string& filename, const std::vector<std::vector<RGB>>& image);
-// Generate the Gaussian kernel
+void writeBmpResize(const std::string& filename, const std::vector<std::vector<RGB>>& image, int resizedWidth, int resizedHeight);
+// Generate the Gaussian kernel to support Gaussian blur
 std::vector<std::vector<double>> generateGaussianKernel(double sigma);
 // Apply Gaussian blur to the image
 std::vector<std::vector<RGB>> applyGaussianBlur(const std::vector<std::vector<RGB>>& image, const std::vector<std::vector<double>>& kernel);
@@ -52,85 +68,119 @@ std::vector<std::vector<RGB>> applyMotionBlur(const std::vector<std::vector<RGB>
 std::vector<std::vector<RGB>> applyBucketFill(const std::vector<std::vector<RGB>>& image, int threshold);
 // Apply bilinear resizing to the image
 std::vector<std::vector<RGB>> resizeBilinear(const std::vector<std::vector<RGB>>& image, int outputWidth, int outputHeight);
-// Function declaration for bicubic resizing
+// Apply bicubic resizing to the image
 std::vector<std::vector<RGB>> resizeBicubic(const std::vector<std::vector<RGB>>& image, int newWidth, int newHeight);
-// Function declaration for nearest neighbor resizing
+// Apply nearest neighbor resizing to the image
 std::vector<std::vector<RGB>> nearestNeighborResize(const std::vector<std::vector<RGB>>& image, int newWidth, int newHeight);
 
+int main() { 
+    auto image = parseImageHelper(); // Helper function for parsing image  
+    gaussianBlurHelper(image); // Helper function for timing and implementing the gaussian blur function  
+    boxBlurHelper(image); // Helper function for timing and implementing the box blur function  
+    montionBlurHelper(image); // Helper function for timing and implementing the motion blur function  
+    bucketFillHelper(image); // Helper function for timing and implementing the bucket fill function  
+    bilinearResizeHelper(image); // Helper function for timing and implementing the bilinear resize function  
+    bicubicResizeHelper(image); // Helper function for timing and implementing the bicubic resize function  
+    nearestNeighborResizeHelper(image); // Helper function for timing and implementing the nearest neighbor resize function 
 
-int main() {
+    return 0;
+}
+
+// Helper function for parsing image
+std::vector<std::vector<RGB>> parseImageHelper() {
     auto start = std::chrono::high_resolution_clock::now(); // Start timing
     std::cout << std::endl << "Parsing input image..." << std::endl;
-    auto image = readBmp(InputFilename); // Read the image from file
+    auto image = readBmp(InputFilename); // Read and process the image from file
     auto end = std::chrono::high_resolution_clock::now(); // End timing
     std::chrono::duration<double> elapsed = end - start; // Calculate elapsed time
     std::cout << "Time taken for parsing input image (" << (image[0].size() * image.size()) << "px): " << elapsed.count() << " seconds." << std::endl << std::endl;
 
+    return image;
+}
+
+// Helper function for timing and implementing the gaussian blur function
+void gaussianBlurHelper(std::vector<std::vector<RGB>> image) {
     std::cout << "Applying Gaussian blur (Sigma=" << Sigma << ")..." << std::endl;
-    start = std::chrono::high_resolution_clock::now(); // Reset start time
+    auto start = std::chrono::high_resolution_clock::now(); // Reset start time
     auto kernel = generateGaussianKernel(Sigma); // Generate the Gaussian kernel (precompute the blur matrix values)
     auto blurredImage = applyGaussianBlur(image, kernel); // Apply Gaussian blur to the image
-    end = std::chrono::high_resolution_clock::now(); // End timing
-    elapsed = end - start; // Calculate elapsed time
+    auto end = std::chrono::high_resolution_clock::now(); // End timing
+    auto elapsed = end - start; // Calculate elapsed time
     std::cout << "Time taken for applying Gaussian blur: " << elapsed.count() << " seconds." << std::endl;
     writeBmp(GaussianBlurredOutputFilename, blurredImage); // Write the blurred image to a new file
     std::cout << "Saved gaussian blurred image to \"" << GaussianBlurredOutputFilename << "\"" << std::endl << std::endl;
+}
 
+// Helper function for timing and implementing the box blur function
+void boxBlurHelper(std::vector<std::vector<RGB>> image) {
     std::cout << "Applying box blur (BoxSize=" << BoxSize << ")..." << std::endl;
-    start = std::chrono::high_resolution_clock::now(); // Reset start time
+    auto start = std::chrono::high_resolution_clock::now(); // Reset start time
     auto boxBlurredImage = applyBoxBlur(image, BoxSize);
-    end = std::chrono::high_resolution_clock::now(); // End timing
-    elapsed = end - start; // Calculate elapsed time
+    auto end = std::chrono::high_resolution_clock::now(); // End timing
+    auto elapsed = end - start; // Calculate elapsed time
     std::cout << "Time taken for applying box blur: " << elapsed.count() << " seconds." << std::endl;
     writeBmp(BoxBlurredOutputFilename, boxBlurredImage); // Write the blurred image to a new file
     std::cout << "Saved box-blurred image to \"" << BoxBlurredOutputFilename << "\"" << std::endl << std::endl;
+}
 
+// Helper function for timing and implementing the motion blur function
+void montionBlurHelper(std::vector<std::vector<RGB>> image) {
     std::cout << "Applying motion blur (MotionLength=" << MotionLength << ")..." << std::endl;
-    start = std::chrono::high_resolution_clock::now(); // Reset start time
+    auto start = std::chrono::high_resolution_clock::now(); // Reset start time
     auto motionBlurredImage = applyMotionBlur(image, MotionLength);
-    end = std::chrono::high_resolution_clock::now(); // End timing
-    elapsed = end - start; // Calculate elapsed time
+    auto end = std::chrono::high_resolution_clock::now(); // End timing
+    auto elapsed = end - start; // Calculate elapsed time
     std::cout << "Time taken for applying motion blur: " << elapsed.count() << " seconds." << std::endl;
     writeBmp(MotionBlurredOutputFilename, motionBlurredImage); // Write the motion-blurred image to a new file
     std::cout << "Saved motion-blurred image to \"" << MotionBlurredOutputFilename << "\"" << std::endl << std::endl;
+}
 
+// Helper function for timing and implementing the bucket fill function
+void bucketFillHelper(std::vector<std::vector<RGB>> image) {
     std::cout << "Applying bucket fill (Threshold=" << BucketFillThreshold << ")..." << std::endl;
-    start = std::chrono::high_resolution_clock::now(); // Reset start time
+    auto start = std::chrono::high_resolution_clock::now(); // Reset start time
     auto bucketFilledImage = applyBucketFill(image, BucketFillThreshold);
-    end = std::chrono::high_resolution_clock::now(); // End timing
-    elapsed = end - start; // Calculate elapsed time
+    auto end = std::chrono::high_resolution_clock::now(); // End timing
+    auto elapsed = end - start; // Calculate elapsed time
     std::cout << "Time taken for applying bucket fill: " << elapsed.count() << " seconds." << std::endl;
     writeBmp(BucketFillOutputFilename, bucketFilledImage); // Write the bucket-filled image to a new file
     std::cout << "Saved bucket-filled image to \"" << BucketFillOutputFilename << "\"" << std::endl << std::endl;
+}
 
-    std::cout << "Applying bilinear resizing (Output Size=" << desiredWidth << "x" << desiredHeight << ")..." << std::endl;
-    start = std::chrono::high_resolution_clock::now(); // Reset start time
-    auto bilinearResizedImage = resizeBilinear(image, desiredWidth, desiredHeight);
-    end = std::chrono::high_resolution_clock::now(); // End timing
-    elapsed = end - start; // Calculate elapsed time
+// Helper function for timing and implementing the bilinear resize function
+void bilinearResizeHelper(std::vector<std::vector<RGB>> image) {
+    std::cout << "Applying bilinear resizing (Output Size=" << resizeWidth << "x" << resizeHeight << ")..." << std::endl;
+    auto start = std::chrono::high_resolution_clock::now(); // Reset start time
+    auto bilinearResizedImage = resizeBilinear(image, resizeWidth, resizeHeight);
+    auto end = std::chrono::high_resolution_clock::now(); // End timing
+    auto elapsed = end - start; // Calculate elapsed time
     std::cout << "Time taken for applying bilinear resizing: " << elapsed.count() << " seconds." << std::endl;
-    writeBmpResize(BilinearResizedOutputFilename, bilinearResizedImage); // Write the resized image to a new file
+    writeBmpResize(BilinearResizedOutputFilename, bilinearResizedImage, resizeWidth, resizeHeight); // Write the resized image to a new file
     std::cout << "Saved bilinear-resized image to \"" << BilinearResizedOutputFilename << "\"" << std::endl << std::endl;
+}
 
-    std::cout << "Applying bicubic resizing (Output Size=" << desiredWidth << "x" << desiredHeight << ")..." << std::endl;
-    start = std::chrono::high_resolution_clock::now(); // Reset start time
-    auto bicubicResizedImage = resizeBicubic(image, desiredWidth, desiredHeight); // Use bicubic resizing
-    end = std::chrono::high_resolution_clock::now(); // End timing
-    elapsed = end - start; // Calculate elapsed time
+// Helper function for timing and implementing the bicubic resize function
+void bicubicResizeHelper(std::vector<std::vector<RGB>> image) {
+    std::cout << "Applying bicubic resizing (Output Size=" << resizeWidth << "x" << resizeHeight << ")..." << std::endl;
+    auto start = std::chrono::high_resolution_clock::now(); // Reset start time
+    auto bicubicResizedImage = resizeBicubic(image, resizeWidth, resizeHeight); // Use bicubic resizing
+    auto end = std::chrono::high_resolution_clock::now(); // End timing
+    auto elapsed = end - start; // Calculate elapsed time
     std::cout << "Time taken for applying bicubic resizing: " << elapsed.count() << " seconds." << std::endl;
-    writeBmpResize(BicubicResizedOutputFilename, bicubicResizedImage); // Write the resized image to a new file
+    writeBmpResize(BicubicResizedOutputFilename, bicubicResizedImage, resizeWidth, resizeHeight); // Write the resized image to a new file
     std::cout << "Saved bicubic-resized image to \"" << BicubicResizedOutputFilename << "\"" << std::endl << std::endl;
+}
 
-    std::cout << "Applying nearest neighbor resizing (Output Size=" << desiredWidth << "x" << desiredHeight << ")..." << std::endl;
-    start = std::chrono::high_resolution_clock::now(); // Reset start time
-    auto nearestNeighborResizedImage = nearestNeighborResize(image, desiredWidth, desiredHeight); // Use nearest neighbor resizing
-    end = std::chrono::high_resolution_clock::now(); // End timing
-    elapsed = end - start; // Calculate elapsed time
+// Helper function for timing and implementing the nearest neighbor resize function
+void nearestNeighborResizeHelper(std::vector<std::vector<RGB>> image) {
+    std::cout << "Applying nearest neighbor resizing (Output Size=" << resizeWidth << "x" << resizeHeight << ")..." << std::endl;
+    auto start = std::chrono::high_resolution_clock::now(); // Reset start time
+    auto nearestNeighborResizedImage = nearestNeighborResize(image, resizeWidth, resizeHeight); // Use nearest neighbor resizing
+    auto end = std::chrono::high_resolution_clock::now(); // End timing
+    auto elapsed = end - start; // Calculate elapsed time
     std::cout << "Time taken for applying nearest neighbor resizing: " << elapsed.count() << " seconds." << std::endl;
-    writeBmpResize(NearestNeighborResizedOutputFilename, nearestNeighborResizedImage); // Write the resized image to a new file
+    writeBmpResize(NearestNeighborResizedOutputFilename, nearestNeighborResizedImage, resizeWidth, resizeHeight); // Write the resized image to a new file
     std::cout << "Saved nearestNeighbor-resized image to \"" << NearestNeighborResizedOutputFilename << "\"" << std::endl << std::endl;
-
-    return 0;
 }
 
 // Read bitmap images
@@ -239,7 +289,8 @@ void writeBmp(const std::string& filename, const std::vector<std::vector<RGB>>& 
         }
     }
 }
-void writeBmpResize(const std::string& filename, const std::vector<std::vector<RGB>>& image) {
+
+void writeBmpResize(const std::string& filename, const std::vector<std::vector<RGB>>& image, int resizedWidth, int resizedHeight) {
     std::ofstream outFile(filename, std::ios::binary);
     if (!outFile) {
         std::cerr << "Could not open output file for writing." << std::endl;
@@ -371,8 +422,8 @@ double colorDistance(const RGB& color1, const RGB& color2) {
 std::vector<std::vector<RGB>> applyBucketFill(const std::vector<std::vector<RGB>>& image, int threshold) {
     int height = image.size(), width = image[0].size();
     const RGB fillColor  = {0, 255, 0}; // Green color
-    int seedX = BUCKET_FILL_X;
-    int seedY = BUCKET_FILL_Y;
+    int seedX = bucketFillX;
+    int seedY = bucketFillY;
 
     std::vector<std::vector<RGB>> bucketFilledImage = image;
     std::vector<std::vector<bool>> visited(height, std::vector<bool>(width, false));
