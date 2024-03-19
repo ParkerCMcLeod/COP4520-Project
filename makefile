@@ -37,9 +37,21 @@ install-python-deps:
 $(TARGET): install-python-deps $(OBJECTS)
 	$(CXX) $(CXXFLAGS) $(OBJECTS) -o $(TARGET)
 
-# Rule for running the executable with an optional function name argument
+# Default parameter values
+sigma ?= 3.0
+boxSize ?= 9
+motionLength ?= 15
+bucketFillThreshold ?= 10
+bucketFillX ?= 504
+bucketFillY ?= 341
+resizeWidth ?= 800
+resizeHeight ?= 600
+inputImageSize ?= small
+function ?= all
+
+# Rule for running the executable with parameters
 run: $(TARGET)
-	./$(call FIXPATH,$(TARGET)) $(ARGS)
+	./$(call FIXPATH,$(TARGET)) $(sigma) $(boxSize) $(motionLength) $(bucketFillThreshold) $(bucketFillX) $(bucketFillY) $(resizeWidth) $(resizeHeight) $(inputImageSize) $(function)
 
 # Rule for cleaning up generated files
 clean:

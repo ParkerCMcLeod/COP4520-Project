@@ -18,7 +18,7 @@
 #include <sys/types.h>
 #endif
 
-const std::string InputFilename = "in/smallImage.bmp"; // Input
+std::string InputFilename; // Input
 const std::string GaussianBlurredOutputFilename = "out/gaussianBlur.bmp"; // Output
 const std::string BoxBlurredOutputFilename = "out/boxBlur.bmp"; // Output
 const std::string MotionBlurredOutputFilename = "out/motionBlur.bmp"; // Output
@@ -27,14 +27,16 @@ const std::string BilinearResizedOutputFilename = "out/bilinearResize.bmp"; // O
 const std::string BicubicResizedOutputFilename = "out/bicubicResize.bmp"; // Output
 const std::string NearestNeighborResizedOutputFilename = "out/nearestNeighborResize.bmp"; // Output
 
-constexpr double Sigma = 3.0; // Gaussian blur sigma value (blur radius, significant performance impact)
-constexpr int BoxSize = 9; // Box blur value (blur radius, must be odd)
-constexpr int MotionLength = 15; // Define the length of the motion blur
-constexpr int BucketFillThreshold = 10; // Threshold for bucket fill
-constexpr int bucketFillX = 504; // X pixel location for starting bucket fill
-constexpr int bucketFillY = 341; // Y pixel location for starting bucket fill
-constexpr int resizeWidth = 800; // Desired resize width
-constexpr int resizeHeight = 600; // Desired resize height
+double sigma = 3.0; // Gaussian blur sigma value (blur radius, significant performance impact)
+int boxSize = 9; // Box blur value (blur radius, must be odd)
+int motionLength = 15; // Define the length of the motion blur
+int bucketFillThreshold = 10; // Threshold for bucket fill
+int bucketFillX = 504; // X pixel location for starting bucket fill
+int bucketFillY = 341; // Y pixel location for starting bucket fill
+int resizeWidth = 800; // Desired resize width
+int resizeHeight = 600; // Desired resize height
+std::string inputImageSize = "small"; // Which input image to use (small medium large)
+std::string function = "all"; // Which function to run (all gaussianBlur boxBlur motionBlur bucketFill bilinearResize bicubicResize nearestNeighborResize)
 
 constexpr double PI = 3.14159265358979323846; // PI constant
 
@@ -85,31 +87,59 @@ std::vector<std::vector<RGB>> resizeBicubic(const std::vector<std::vector<RGB>>&
 std::vector<std::vector<RGB>> nearestNeighborResize(const std::vector<std::vector<RGB>>& image, int newWidth, int newHeight);
 
 int main(int argc, char* argv[]) {
+    if (argc < 11) {
+        std::cerr << "Usage: " << argv[0] << " <sigma> <boxSize> <motionLength> <bucketFillThreshold> <bucketFillX> <bucketFillY> <resizeWidth> <resizeHeight> <inputImageSize> <function>" << std::endl;
+        return 1;
+    }
+
+    // Parse the command-line arguments
+    sigma = std::atof(argv[1]);
+    boxSize = std::atoi(argv[2]);
+    motionLength = std::atoi(argv[3]);
+    bucketFillThreshold = std::atoi(argv[4]);
+    bucketFillX = std::atoi(argv[5]);
+    bucketFillY = std::atoi(argv[6]);
+    resizeWidth = std::atoi(argv[7]);
+    resizeHeight = std::atoi(argv[8]);
+    inputImageSize = argv[9];
+    function = argv[10];
+
+    if (inputImageSize == "small") {
+        InputFilename = "in/smallImage.bmp";
+    } else if (inputImageSize == "medium") {
+        InputFilename = "in/mediumImage.bmp";
+    } else if (inputImageSize == "large") {
+        InputFilename = "in/largeImage.bmp";
+    } else {
+        std::cerr << "Unknown input image size: " << InputFilename << std::endl;
+        return 1;
+    }
+
     createOutFolder(); // Create an out folder
     auto image = parseImageHelper(); // Helper function for parsing image  
 
-    std::unordered_map<std::string, std::function<void()>> functions = {
-        {"gaussianBlur", [&]() { gaussianBlurHelper(image); }}, // Helper function for timing and implementing the gaussian blur function  
-        {"boxBlur", [&]() { boxBlurHelper(image); }}, // Helper function for timing and implementing the box blur function  
-        {"motionBlur", [&]() { motionBlurHelper(image); }}, // Helper function for timing and implementing the motion blur function  
-        {"bucketFill", [&]() { bucketFillHelper(image); }}, // Helper function for timing and implementing the bucket fill function  
-        {"bilinearResize", [&]() { bilinearResizeHelper(image); }}, // Helper function for timing and implementing the bilinear resize function  
-        {"bicubicResize", [&]() { bicubicResizeHelper(image); }}, // Helper function for timing and implementing the bicubic resize function  
-        {"nearestNeighborResize", [&]() { nearestNeighborResizeHelper(image); }} // Helper function for timing and implementing the nearest neighbor resize function 
+    // Map of functions to their respective handlers
+    std::unordered_map<std::string, std::function<void(std::vector<std::vector<RGB>>&)> > functions = {
+        {"gaussianBlur", gaussianBlurHelper},
+        {"boxBlur", boxBlurHelper},
+        {"motionBlur", motionBlurHelper},
+        {"bucketFill", bucketFillHelper},
+        {"bilinearResize", bilinearResizeHelper},
+        {"bicubicResize", bicubicResizeHelper},
+        {"nearestNeighborResize", nearestNeighborResizeHelper}
     };
 
-    if (argc > 1) {
-        std::string action(argv[1]);
-        if (functions.find(action) != functions.end()) {
-            functions[action]();
+    // Execute specified function if provided, else execute all
+    if (function != "all") {
+        if (functions.find(function) != functions.end()) {
+            functions[function](image);
         } else {
-            std::cerr << "Unknown function: " << action << std::endl;
+            std::cerr << "Unknown function: " << function << std::endl;
             return 1;
         }
     } else {
-        // If no specific function, run all functions
         for (auto& func : functions) {
-            func.second();
+            func.second(image);
         }
     }
 
@@ -158,9 +188,9 @@ std::vector<std::vector<RGB>> parseImageHelper() {
 
 // Helper function for timing and implementing the gaussian blur function
 void gaussianBlurHelper(std::vector<std::vector<RGB>> image) {
-    std::cout << "Applying Gaussian blur (Sigma=" << Sigma << ")..." << std::endl;
+    std::cout << "Applying Gaussian blur (sigma=" << sigma << ")..." << std::endl;
     auto start = std::chrono::high_resolution_clock::now(); // Reset start time
-    auto kernel = generateGaussianKernel(Sigma); // Generate the Gaussian kernel (precompute the blur matrix values)
+    auto kernel = generateGaussianKernel(sigma); // Generate the Gaussian kernel (precompute the blur matrix values)
     auto blurredImage = applyGaussianBlur(image, kernel); // Apply Gaussian blur to the image
     auto end = std::chrono::high_resolution_clock::now(); // End timing
     auto elapsed = end - start; // Calculate elapsed time
@@ -171,9 +201,9 @@ void gaussianBlurHelper(std::vector<std::vector<RGB>> image) {
 
 // Helper function for timing and implementing the box blur function
 void boxBlurHelper(std::vector<std::vector<RGB>> image) {
-    std::cout << "Applying box blur (BoxSize=" << BoxSize << ")..." << std::endl;
+    std::cout << "Applying box blur (boxSize=" << boxSize << ")..." << std::endl;
     auto start = std::chrono::high_resolution_clock::now(); // Reset start time
-    auto boxBlurredImage = applyBoxBlur(image, BoxSize);
+    auto boxBlurredImage = applyBoxBlur(image, boxSize);
     auto end = std::chrono::high_resolution_clock::now(); // End timing
     auto elapsed = end - start; // Calculate elapsed time
     std::cout << "Time taken for applying box blur: " << elapsed.count() << " seconds." << std::endl;
@@ -183,9 +213,9 @@ void boxBlurHelper(std::vector<std::vector<RGB>> image) {
 
 // Helper function for timing and implementing the motion blur function
 void motionBlurHelper(std::vector<std::vector<RGB>> image) {
-    std::cout << "Applying motion blur (MotionLength=" << MotionLength << ")..." << std::endl;
+    std::cout << "Applying motion blur (motionLength=" << motionLength << ")..." << std::endl;
     auto start = std::chrono::high_resolution_clock::now(); // Reset start time
-    auto motionBlurredImage = applyMotionBlur(image, MotionLength);
+    auto motionBlurredImage = applyMotionBlur(image, motionLength);
     auto end = std::chrono::high_resolution_clock::now(); // End timing
     auto elapsed = end - start; // Calculate elapsed time
     std::cout << "Time taken for applying motion blur: " << elapsed.count() << " seconds." << std::endl;
@@ -195,9 +225,9 @@ void motionBlurHelper(std::vector<std::vector<RGB>> image) {
 
 // Helper function for timing and implementing the bucket fill function
 void bucketFillHelper(std::vector<std::vector<RGB>> image) {
-    std::cout << "Applying bucket fill (Threshold=" << BucketFillThreshold << ")..." << std::endl;
+    std::cout << "Applying bucket fill (Threshold=" << bucketFillThreshold << ")..." << std::endl;
     auto start = std::chrono::high_resolution_clock::now(); // Reset start time
-    auto bucketFilledImage = applyBucketFill(image, BucketFillThreshold);
+    auto bucketFilledImage = applyBucketFill(image, bucketFillThreshold);
     auto end = std::chrono::high_resolution_clock::now(); // End timing
     auto elapsed = end - start; // Calculate elapsed time
     std::cout << "Time taken for applying bucket fill: " << elapsed.count() << " seconds." << std::endl;
