@@ -38,15 +38,15 @@ $(TARGET): install-python-deps $(OBJECTS)
 sigma ?= 3.0
 boxSize ?= 9
 motionLength ?= 15
-bucketFillThreshold ?= 10
-bucketFillX ?= 504
-bucketFillY ?= 341
-resizeWidthBilinear ?= 100
-resizeHeightBilinear ?= 100
-resizeWidthBicubic ?= 100
-resizeHeightBicubic ?= 100
-resizeWidthNearestNeighbor ?= 100
-resizeHeightNearestNeighbor ?= 100
+bucketFillThreshold ?= 75
+bucketFillX ?= 800
+bucketFillY ?= 170
+resizeWidthBilinear ?= 500
+resizeHeightBilinear ?= 745
+resizeWidthBicubic ?= 500
+resizeHeightBicubic ?= 745
+resizeWidthNearestNeighbor ?= 500
+resizeHeightNearestNeighbor ?= 745
 inputImageSize ?= small
 function ?= all
 

@@ -30,15 +30,15 @@ const std::string NearestNeighborResizedOutputFilename = "out/nearestNeighborRes
 double sigma = 3.0; // Gaussian blur sigma value (blur radius, significant performance impact)
 int boxSize = 9; // Box blur value (blur radius, must be odd)
 int motionLength = 15; // Define the length of the motion blur
-int bucketFillThreshold = 10; // Threshold for bucket fill
-int bucketFillX = 504; // X pixel location for starting bucket fill
-int bucketFillY = 341; // Y pixel location for starting bucket fill
-int resizeWidthBilinear = 100; // Desired resize width
-int resizeHeightBilinear = 100; // Desired resize height
-int resizeWidthBicubic = 100; // Desired resize width
-int resizeHeightBicubic = 100; // Desired resize height
-int resizeWidthNearestNeighbor = 100; // Desired resize width
-int resizeHeightNearestNeighbor = 100; // Desired resize height
+int bucketFillThreshold = 75; // Threshold for bucket fill
+int bucketFillX = 800; // X pixel location for starting bucket fill
+int bucketFillY = 170; // Y pixel location for starting bucket fill
+int resizeWidthBilinear = 500; // Desired resize width
+int resizeHeightBilinear = 745; // Desired resize height
+int resizeWidthBicubic = 500; // Desired resize width
+int resizeHeightBicubic = 745; // Desired resize height
+int resizeWidthNearestNeighbor = 500; // Desired resize width
+int resizeHeightNearestNeighbor = 745; // Desired resize height
 std::string inputImageSize = "small"; // Which input image to use (small medium large)
 std::string function = "all"; // Which function to run (all gaussianBlur boxBlur motionBlur bucketFill bilinearResize bicubicResize nearestNeighborResize)
 
@@ -92,7 +92,7 @@ std::vector<std::vector<RGB>> nearestNeighborResize(const std::vector<std::vecto
 
 int main(int argc, char* argv[]) {
     if (argc < 15) {
-        std::cerr << "Usage: " << argv[0] << " <sigma> <boxSize> <motionLength> <bucketFillThreshold> <bucketFillX> <bucketFillY> resizeWidthBilinear <resizeHeightBilinear> <resizeWidthBicubic> <resizeHeightBicubic> <resizeWidthNearestNeighbor> <resizeHeightNearestNeighbor> <inputImageSize> <function>" << std::endl;
+        std::cerr << "Usage: " << argv[0] << " <sigma> <boxSize> <motionLength> <bucketFillThreshold> <bucketFillX> <bucketFillY> resizeWidthBilinear <resizeHeightBilinear> <resizeWidthBicubic> <resizeHeightBicubic> <resizeWidthNearestNeighbor> <resizeHeightNearestNeighbor> <inputImageSize> <function>" << std::endl << std::endl;
         return 1;
     }
 
@@ -183,7 +183,7 @@ void createOutFolder() {
 }
 
 std::vector<std::vector<RGB>> parseImageHelper() {
-    std::cout << std::endl << "Parsing input image..." << std::endl;
+    std::cout << std::endl << "Parsing input image..." << std::endl << std::endl;
     auto start = std::chrono::high_resolution_clock::now();
     auto image = readBmp(InputFilename);
     auto end = std::chrono::high_resolution_clock::now();
@@ -194,79 +194,79 @@ std::vector<std::vector<RGB>> parseImageHelper() {
 }
 
 void gaussianBlurHelper(std::vector<std::vector<RGB>> image) {
-    std::cout << "Applying Gaussian blur (sigma=" << sigma << ")..." << std::endl;
+    std::cout << "Applying Gaussian blur (sigma=" << sigma << ")..." << std::endl << std::endl;
     auto start = std::chrono::high_resolution_clock::now();
     auto kernel = generateGaussianKernel(sigma);
     auto blurredImage = applyGaussianBlur(image, kernel);
     auto end = std::chrono::high_resolution_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "Time taken for applying Gaussian blur: " << elapsed.count() << " milliseconds." << std::endl;
+    std::cout << "Time taken for applying Gaussian blur: " << elapsed.count() << " milliseconds." << std::endl << std::endl;
     writeBmp(GaussianBlurredOutputFilename, blurredImage);
     std::cout << "Saved gaussian blurred image to \"" << GaussianBlurredOutputFilename << "\"" << std::endl << std::endl;
 }
 
 void boxBlurHelper(std::vector<std::vector<RGB>> image) {
-    std::cout << "Applying box blur (boxSize=" << boxSize << ")..." << std::endl;
+    std::cout << "Applying box blur (boxSize=" << boxSize << ")..." << std::endl << std::endl;
     auto start = std::chrono::high_resolution_clock::now();
     auto boxBlurredImage = applyBoxBlur(image, boxSize);
     auto end = std::chrono::high_resolution_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "Time taken for applying box blur: " << elapsed.count() << " milliseconds." << std::endl;
+    std::cout << "Time taken for applying box blur: " << elapsed.count() << " milliseconds." << std::endl << std::endl;
     writeBmp(BoxBlurredOutputFilename, boxBlurredImage);
     std::cout << "Saved box-blurred image to \"" << BoxBlurredOutputFilename << "\"" << std::endl << std::endl;
 }
 
 void motionBlurHelper(std::vector<std::vector<RGB>> image) {
-    std::cout << "Applying motion blur (motionLength=" << motionLength << ")..." << std::endl;
+    std::cout << "Applying motion blur (motionLength=" << motionLength << ")..." << std::endl << std::endl;
     auto start = std::chrono::high_resolution_clock::now();
     auto motionBlurredImage = applyMotionBlur(image, motionLength);
     auto end = std::chrono::high_resolution_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "Time taken for applying motion blur: " << elapsed.count() << " milliseconds." << std::endl;
+    std::cout << "Time taken for applying motion blur: " << elapsed.count() << " milliseconds." << std::endl << std::endl;
     writeBmp(MotionBlurredOutputFilename, motionBlurredImage);
     std::cout << "Saved motion-blurred image to \"" << MotionBlurredOutputFilename << "\"" << std::endl << std::endl;
 }
 
 void bucketFillHelper(std::vector<std::vector<RGB>> image) {
-    std::cout << "Applying bucket fill (Threshold=" << bucketFillThreshold << ")..." << std::endl;
+    std::cout << "Applying bucket fill (Threshold=" << bucketFillThreshold << ")..." << std::endl << std::endl;
     auto start = std::chrono::high_resolution_clock::now();
     auto bucketFilledImage = applyBucketFill(image, bucketFillThreshold);
     auto end = std::chrono::high_resolution_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "Time taken for applying bucket fill: " << elapsed.count() << " milliseconds." << std::endl;
+    std::cout << "Time taken for applying bucket fill: " << elapsed.count() << " milliseconds." << std::endl << std::endl;
     writeBmp(BucketFillOutputFilename, bucketFilledImage);
     std::cout << "Saved bucket-filled image to \"" << BucketFillOutputFilename << "\"" << std::endl << std::endl;
 }
 
 void bilinearResizeHelper(std::vector<std::vector<RGB>> image) {
-    std::cout << "Applying bilinear resizing (Output Size=" << resizeWidthBilinear << "x" << resizeHeightBilinear << ")..." << std::endl;
+    std::cout << "Applying bilinear resizing (Output Size=" << resizeWidthBilinear << "x" << resizeHeightBilinear << ")..." << std::endl << std::endl;
     auto start = std::chrono::high_resolution_clock::now();
     auto bilinearResizedImage = resizeBilinear(image, resizeWidthBilinear, resizeHeightBilinear);
     auto end = std::chrono::high_resolution_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "Time taken for applying bilinear resizing: " << elapsed.count() << " milliseconds." << std::endl;
+    std::cout << "Time taken for applying bilinear resizing: " << elapsed.count() << " milliseconds." << std::endl << std::endl;
     writeBmpResize(BilinearResizedOutputFilename, bilinearResizedImage, resizeWidthBilinear, resizeHeightBilinear);
     std::cout << "Saved bilinear-resized image to \"" << BilinearResizedOutputFilename << "\"" << std::endl << std::endl;
 }
 
 void bicubicResizeHelper(std::vector<std::vector<RGB>> image) {
-    std::cout << "Applying bicubic resizing (Output Size=" << resizeWidthBicubic << "x" << resizeHeightBicubic << ")..." << std::endl;
+    std::cout << "Applying bicubic resizing (Output Size=" << resizeWidthBicubic << "x" << resizeHeightBicubic << ")..." << std::endl << std::endl;
     auto start = std::chrono::high_resolution_clock::now();
     auto bicubicResizedImage = resizeBicubic(image, resizeWidthBicubic, resizeHeightBicubic);
     auto end = std::chrono::high_resolution_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "Time taken for applying bicubic resizing: " << elapsed.count() << " milliseconds." << std::endl;
+    std::cout << "Time taken for applying bicubic resizing: " << elapsed.count() << " milliseconds." << std::endl << std::endl;
     writeBmpResize(BicubicResizedOutputFilename, bicubicResizedImage, resizeWidthBicubic, resizeHeightBicubic);
     std::cout << "Saved bicubic-resized image to \"" << BicubicResizedOutputFilename << "\"" << std::endl << std::endl;
 }
 
 void nearestNeighborResizeHelper(std::vector<std::vector<RGB>> image) {
-    std::cout << "Applying nearest neighbor resizing (Output Size=" << resizeWidthNearestNeighbor << "x" << resizeHeightNearestNeighbor << ")..." << std::endl;
+    std::cout << "Applying nearest neighbor resizing (Output Size=" << resizeWidthNearestNeighbor << "x" << resizeHeightNearestNeighbor << ")..." << std::endl << std::endl;
     auto start = std::chrono::high_resolution_clock::now();
     auto nearestNeighborResizedImage = nearestNeighborResize(image, resizeWidthNearestNeighbor, resizeHeightNearestNeighbor);
     auto end = std::chrono::high_resolution_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "Time taken for applying nearest neighbor resizing: " << elapsed.count() << " milliseconds." << std::endl;
+    std::cout << "Time taken for applying nearest neighbor resizing: " << elapsed.count() << " milliseconds." << std::endl << std::endl;
     writeBmpResize(NearestNeighborResizedOutputFilename, nearestNeighborResizedImage, resizeWidthNearestNeighbor, resizeHeightNearestNeighbor);
     std::cout << "Saved nearestNeighbor-resized image to \"" << NearestNeighborResizedOutputFilename << "\"" << std::endl << std::endl;
 }
@@ -276,7 +276,7 @@ std::vector<std::vector<RGB>> readBmp(const std::string& filename) {
     std::ifstream bmpFile(filename, std::ios::binary); // Open the BMP file in binary mode
     std::vector<std::vector<RGB>> image; // Create a 2D vector to store the pixels
     if (!bmpFile) {
-        std::cerr << "Could not open BMP file!" << std::endl; // Check if the file was successfully opened
+        std::cerr << "Could not open BMP file!" << std::endl << std::endl; // Check if the file was successfully opened
         return image;
     }
 
@@ -357,7 +357,7 @@ void writeBmp(const std::string& filename, const std::vector<std::vector<RGB>>& 
     std::ofstream outFile(filename, std::ios::binary); // Open the output file in binary mode
 
     if (!bmpFile || !outFile) {
-        std::cerr << "Could not open BMP files for reading/writing." << std::endl;
+        std::cerr << "Could not open BMP files for reading/writing." << std::endl << std::endl;
         return;
     }
 
@@ -381,7 +381,7 @@ void writeBmp(const std::string& filename, const std::vector<std::vector<RGB>>& 
 void writeBmpResize(const std::string& filename, const std::vector<std::vector<RGB>>& image, int resizedWidth, int resizedHeight) {
     std::ofstream outFile(filename, std::ios::binary);
     if (!outFile) {
-        std::cerr << "Could not open output file for writing." << std::endl;
+        std::cerr << "Could not open output file for writing." << std::endl << std::endl;
         return;
     }
 
@@ -519,7 +519,7 @@ std::vector<std::vector<RGB>> applyBucketFill(const std::vector<std::vector<RGB>
 
     // Check if seed point is within the image
     if (seedX < 0 || seedX >= width || seedY < 0 || seedY >= height) {
-        std::cerr << "Seed point is outside the image bounds." << std::endl;
+        std::cerr << "Seed point is outside the image bounds." << std::endl << std::endl;
         return bucketFilledImage; // Return the original image if seed point is invalid
     }
 

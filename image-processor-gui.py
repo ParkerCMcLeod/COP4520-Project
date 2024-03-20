@@ -1,142 +1,159 @@
 import tkinter as tk
 from tkinter import ttk
 from PIL import Image
-from subprocess import Popen, PIPE
+from subprocess import Popen, PIPE, STDOUT
 
-# Global variables
-root = tk.Tk()
-frame = tk.Frame(root, bg='#f0f0f0', bd=10)
-status_label = tk.Label(root, text="Ready", font=('Helvetica', 12), bg='#e6e6e6')
-input_image_size = tk.StringVar(value='small') 
-input_image_path = "in/smallImage.bmp"
-input_photo = None
-input_label = output_label = None 
+class ImageProcessorApp:
+    def __init__(self, root):
+        self.root = root
+        self.setup_ui()
 
-def bmp_to_png(bmp_path):
-    new_size=(201, 300)
-    png_path = bmp_path.replace('.bmp', '.png')
-    with Image.open(bmp_path) as img:
-        img = img.resize(new_size, Image.LANCZOS)
-        img.save(png_path, 'PNG')
-    return png_path
+    def setup_ui(self):
+        self.root.title("Image Processor")
+        self.set_window_position(1000, 700)
 
-    return png_path
+        controls_frame = tk.Frame(self.root, bg='#f0f0f0', bd=10)
+        right_section_frame = tk.Frame(self.root, bg='#f0f0f0')
+        self.images_frame = tk.Frame(right_section_frame, bg='#f0f0f0')
+        self.console_frame = tk.Frame(right_section_frame, bg='#f0f0f0')
+        
+        controls_frame.pack(side='left', fill='y', expand=False, padx=(1, 1), pady=(1, 1))
+        right_section_frame.pack(side='right', fill='both', expand=True, padx=(1, 1), pady=(1, 1))
+        self.images_frame.pack(side='top', fill='both', expand=True, padx=(1, 1), pady=(1, 1))
+        self.console_frame.pack(side='bottom', fill='both', expand=True, padx=(1, 1), pady=(1, 1))
+        
+        self.setup_console()
+        self.root.configure(bg='#e6e6e6')
+        self.create_image_size_radio_buttons(controls_frame)
+        self.setup_image_frames()
+        self.create_sliders_and_buttons(controls_frame)
 
-def update_status(message):
-    status_label.config(text=message)
+    def setup_console(self):
+        self.console = tk.Text(self.console_frame, height=20, bg='black', fg='white')
+        self.console.pack(fill='both', expand=True)
 
-def update_output_image(function_name):
-    output_image_path = f"out/{function_name}.bmp"
-    output_image_png_path = bmp_to_png(output_image_path)
-    try:
-        output_photo = tk.PhotoImage(file=output_image_png_path)
-        output_label.configure(image=output_photo)
-        output_label.image = output_photo
-    except tk.TclError as e:
-        print(f"Failed to load output image: {e}")
+    def bmp_to_png(self, bmp_path):
+        new_size = (201, 300)
+        png_path = bmp_path.replace('.bmp', '.png')
+        with Image.open(bmp_path) as img:
+            img = img.resize(new_size, Image.LANCZOS)
+            img.save(png_path, 'PNG')
+        return png_path
 
-def run_command(arg):
-    update_status(f"Applying {arg}...")
-    root.update_idletasks()
-    command = f"make run sigma={sigma.get()} boxSize={boxSize.get()} motionLength={motionLength.get()} bucketFillThreshold={bucketFillThreshold.get()} bucketFillX={bucketFillX.get()} bucketFillY={bucketFillY.get()} resizeWidthBilinear={resizeWidthBilinear.get()} resizeHeightBilinear={resizeHeightBilinear.get()} resizeWidthBicubic={resizeWidthBicubic.get()} resizeHeightBicubic={resizeHeightBicubic.get()} resizeWidthNearestNeighbor={resizeWidthNearestNeighbor.get()} resizeHeightNearestNeighbor={resizeHeightNearestNeighbor.get()} input_image_size={input_image_size.get()} function={arg}"
-    print(command)
-    process = Popen(command, shell=True, stdout=PIPE, stderr=PIPE)
-    stdout, stderr = process.communicate()
+    def update_output_image(self, function_name):
+        output_image_path = f"out/{function_name}.bmp"
+        output_image_png_path = self.bmp_to_png(output_image_path)
+        try:
+            output_photo = tk.PhotoImage(file=output_image_png_path)
+            self.output_label.configure(image=output_photo)
+            self.output_label.image = output_photo
+        except tk.TclError as e:
+            self.console.insert(tk.END, f"Failed to load output image: {e}\n")
+            self.console.see(tk.END)
 
-    if process.returncode == 0:
-        print(f"Command executed successfully for {arg}")
-        print(stdout.decode())
-        update_output_image(arg)
-        update_status(f"{arg} applied successfully.")
-    else:
-        print(f"Error in command execution for {arg}")
-        print(stderr.decode())
-        update_status(f"Error applying {arg}.")
+    def run_command(self, arg):
+        self.root.update_idletasks()
+        command = f"make run sigma={self.sigma.get()} boxSize={self.boxSize.get()} motionLength={self.motionLength.get()} bucketFillThreshold={self.bucketFillThreshold.get()} bucketFillX={self.bucketFillX.get()} bucketFillY={self.bucketFillY.get()} resizeWidthBilinear={self.resizeWidthBilinear.get()} resizeHeightBilinear={self.resizeHeightBilinear.get()} resizeWidthBicubic={self.resizeWidthBicubic.get()} resizeHeightBicubic={self.resizeHeightBicubic.get()} resizeWidthNearestNeighbor={self.resizeWidthNearestNeighbor.get()} resizeHeightNearestNeighbor={self.resizeHeightNearestNeighbor.get()} input_image_size={self.input_image_size.get()} function={arg}"
+        process = Popen(command, shell=True, stdout=PIPE, stderr=STDOUT, text=True)
+        display_output = False 
+        while True:
+            output = process.stdout.readline()
+            if output == '' and process.poll() is not None:
+                break
+            if "Parsing input image..." in output: 
+                display_output = True
+            if display_output:
+                self.console.insert(tk.END, output)
+                self.console.see(tk.END)
+        self.update_output_image(arg)
 
-def create_image_size_radio_buttons(frame):
-    size_label_frame = tk.Frame(frame, bg='#e6e6e6')
-    size_label_frame.pack(fill='x', expand=True, padx=5, pady=5)
-    size_label = tk.Label(size_label_frame, text="Input Image Size:", bg='#e6e6e6')
-    size_label.pack(side='left')
+    def create_image_size_radio_buttons(self, controls_frame):
+        size_label_frame = tk.Frame(controls_frame, bg='#e6e6e6')
+        size_label_frame.pack(expand=False, anchor='nw', fill='x')
+        
+        size_label = tk.Label(size_label_frame, text="Input Image Size:", bg='#e6e6e6')
+        size_label.pack(side='left', anchor='w') 
+        
+        rb_container = tk.Frame(size_label_frame, bg='#e6e6e6')
+        rb_container.pack(side='left', padx=5, pady=1) 
 
-    sizes = {"Small": "small", "Medium": "medium", "Large": "large"}
-    for text, size in sizes.items():
-        rb = tk.Radiobutton(size_label_frame, text=text, variable=input_image_size, value=size, bg='#e6e6e6')
-        rb.pack(side='left', padx=5)
+        self.input_image_size = tk.StringVar(value='small') 
+        sizes = {"Small": "small", "Medium": "medium", "Large": "large"}
+        for text, size in sizes.items():
+            rb = tk.Radiobutton(rb_container, text=text, variable=self.input_image_size, value=size, bg='#e6e6e6')
+            rb.pack(side='left', padx=1, pady=1)
 
-def setup_ui():
-    root.title("Image Processor")
-    set_window_position(root, 1280, 720)
-    frame.pack(padx=5, pady=5, expand=True)
-    status_label.pack(side='bottom', pady=(5, 5), fill='x')
-    root.configure(bg='#e6e6e6')
-    create_image_size_radio_buttons(frame)
-    setup_image_frames()
-    create_sliders_and_buttons()
+    def set_window_position(self, width, height):
+        screen_width = self.root.winfo_screenwidth()
+        screen_height = self.root.winfo_screenheight()
+        center_x = int((screen_width - width) / 2)
+        center_y = int((screen_height - height) / 2) - 50
+        self.root.geometry(f"{width}x{height}+{center_x}+{center_y}")
 
-# Centers the window on the screen
-def set_window_position(window, width, height):
-    screen_width = window.winfo_screenwidth()
-    screen_height = window.winfo_screenheight()
-    center_x = int((screen_width - width) / 2)
-    center_y = int((screen_height - height) / 2) - 25
-    window.geometry(f"{width}x{height}+{center_x}+{center_y}")
+    def setup_image_frames(self):
+        self.input_image_path = "in/smallImage.bmp"
+        input_image_png_path = self.bmp_to_png(self.input_image_path)
+        input_photo = tk.PhotoImage(file=input_image_png_path)
+        self.input_label = self.setup_image_frame(self.images_frame, input_photo, "Original")
+        self.output_label = self.setup_image_frame(self.images_frame, input_photo, "Modified (Resized to Match Original)")
 
-def setup_image_frames():
-    global input_photo, input_label, output_label
-    input_image_png_path = bmp_to_png(input_image_path)
-    input_photo = tk.PhotoImage(file=input_image_png_path)
-    input_label = setup_image_frame("left", input_photo, "Original")
-    output_label = setup_image_frame("right", input_photo, "Modified")
+    def setup_image_frame(self, parent_frame, photo, text):
+        label_frame = tk.Frame(parent_frame, bg='#f0f0f0')
+        label_frame.pack(side='left', padx=(1, 1), pady=(25, 0), expand=True, fill='both')
+        label = tk.Label(label_frame, image=photo)
+        label.pack()
+        label.image = photo
+        tk.Label(label_frame, text=text, bg='#f0f0f0').pack()
+        return label
 
-def setup_image_frame(side, photo, text):
-    label_frame = tk.Frame(frame, bg='#f0f0f0')
-    label_frame.pack(side=side, padx=(5, 5), expand=True)
-    label = tk.Label(label_frame, image=photo)
-    label.pack()
-    label.image = photo
-    tk.Label(label_frame, text=text, bg='#f0f0f0').pack()
-    return label
+    def create_sliders_and_buttons(self, controls_frame):
+        left_column_frame = tk.Frame(controls_frame, bg='#e6e6e6')
+        right_column_frame = tk.Frame(controls_frame, bg='#e6e6e6')
 
-def create_sliders_and_buttons():
-    configurations = [
-        {"slider_name": "sigma", "label": "Sigma", "function_name": "gaussianBlur", "color": "#B28DFF", "default": 3.0},  # Light Purple
-        {"slider_name": "boxSize", "label": "Box Size", "function_name": "boxBlur", "color": "#FFD580", "default": 9},  # Light Orange
-        {"slider_name": "motionLength", "label": "Motion Length", "function_name": "motionBlur", "color": "#80CBC4", "default": 15},  # Teal
-        {"slider_name": "bucketFillThreshold", "label": "Bucket Fill Threshold", "function_name": "bucketFill", "color": "#FFABAB", "default": 10},  # Light Red
-        {"slider_name": "bucketFillX", "label": "Bucket Fill X", "function_name": "bucketFill", "color": "#FFABAB", "default": 512},  # Light Red
-        {"slider_name": "bucketFillY", "label": "Bucket Fill Y", "function_name": "bucketFill", "color": "#FFABAB", "default": 384},  # Light Red
-        {"slider_name": "resizeWidthBilinear", "label": "Resize Width", "function_name": "bilinearResize", "color": "#A7FFEB", "default": 100},  # Mint Green
-        {"slider_name": "resizeHeightBilinear", "label": "Resize Height", "function_name": "bilinearResize", "color": "#A7FFEB", "default": 100},  # Mint Green
-        {"slider_name": "resizeWidthBicubic", "label": "Resize Width", "function_name": "bicubicResize", "color": "#FFC4E1", "default": 100},  # Pink Lavender
-        {"slider_name": "resizeHeightBicubic", "label": "Resize Height", "function_name": "bicubicResize", "color": "#FFC4E1", "default": 100},  # Pink Lavender
-        {"slider_name": "resizeWidthNearestNeighbor", "label": "Resize Width", "function_name": "nearestNeighborResize", "color": "#B9FBC0", "default": 100},  # Pastel Green
-        {"slider_name": "resizeHeightNearestNeighbor", "label": "Resize Height", "function_name": "nearestNeighborResize", "color": "#B9FBC0", "default": 100},  # Pastel Green
-    ]
-    for config in configurations:
-        create_slider_and_button(frame, **config)
+        left_column_frame.pack(side='left', fill='both', expand=True, padx=(1, 1), pady=1)
+        right_column_frame.pack(side='right', fill='both', expand=True, padx=(1, 1), pady=1)
 
-def create_slider_and_button(frame, **kwargs):
-    slider_name = kwargs['slider_name']
-    label_text = kwargs['label']
-    function_name = kwargs['function_name']
-    default = kwargs['default']
-    global sigma, boxSize, motionLength, bucketFillThreshold, bucketFillX, bucketFillY, resizeWidthBilinear, resizeHeightBilinear, resizeWidthBicubic, resizeHeightBicubic, resizeWidthNearestNeighbor, resizeHeightNearestNeighbor
-    
-    container_frame = tk.Frame(frame, bg='#e6e6e6')
-    container_frame.pack(fill='x', expand=True, padx=5, pady=5)
+        configurations = [
+            {"slider_name": "sigma", "label": "Sigma", "function_name": "gaussianBlur", "color": "#B28DFF", "default": 3.0},
+            {"slider_name": "boxSize", "label": "Box Size", "function_name": "boxBlur", "color": "#FFD580", "default": 9},
+            {"slider_name": "motionLength", "label": "Motion Length", "function_name": "motionBlur", "color": "#80CBC4", "default": 15},
+            {"slider_name": "bucketFillThreshold", "label": "Bucket Fill Threshold", "function_name": "bucketFill", "color": "#FFABAB", "default": 75},
+            {"slider_name": "bucketFillX", "label": "Bucket Fill X", "function_name": "bucketFill", "color": "#FFABAB", "default": 800},
+            {"slider_name": "bucketFillY", "label": "Bucket Fill Y", "function_name": "bucketFill", "color": "#FFABAB", "default": 170},
+            {"slider_name": "resizeWidthBilinear", "label": "Resize Width Bilinear", "function_name": "bilinearResize", "color": "#A7FFEB", "default": 500},
+            {"slider_name": "resizeHeightBilinear", "label": "Resize Height Bilinear", "function_name": "bilinearResize", "color": "#A7FFEB", "default": 745},
+            {"slider_name": "resizeWidthBicubic", "label": "Resize Width Bicubic", "function_name": "bicubicResize", "color": "#FFC4E1", "default": 500},
+            {"slider_name": "resizeHeightBicubic", "label": "Resize Height Bicubic", "function_name": "bicubicResize", "color": "#FFC4E1", "default": 745},
+            {"slider_name": "resizeWidthNearestNeighbor", "label": "Resize Width Nearest Neighbor", "function_name": "nearestNeighborResize", "color": "#B9FBC0", "default": 500},
+            {"slider_name": "resizeHeightNearestNeighbor", "label": "Resize Height Nearest Neighbor", "function_name": "nearestNeighborResize", "color": "#B9FBC0", "default": 745},
+        ]
 
-    slider_label = tk.Label(container_frame, text=label_text, bg='#e6e6e6')
-    slider_label.pack(side='left')
+        for i, config in enumerate(configurations):
+            if i < len(configurations) // 2:
+                self.create_slider_and_button(left_column_frame, **config)
+            else:
+                self.create_slider_and_button(right_column_frame, **config)
 
-    button = ttk.Button(container_frame, text=f"Apply {function_name}", command=lambda: run_command(function_name))
-    button.pack(side='left', padx=(5, 5))
+    def create_slider_and_button(self, container_frame, slider_name, label, function_name, color, default):
+        slider_frame = tk.Frame(container_frame, bg=color)
+        slider_frame.pack(fill='x', expand=True, padx=5, pady=5)
 
-    slider = tk.Scale(container_frame, from_=0, to=default*3, orient=tk.HORIZONTAL, length=200)
-    slider.set(default)
-    slider.pack(side='right', fill='x', expand=True)
+        slider_label = tk.Label(slider_frame, text=label, bg=color)
+        slider_label.pack()
 
-    globals()[slider_name] = slider
+        slider = tk.Scale(slider_frame, from_=0, to=default*3, orient=tk.HORIZONTAL, length=200, bg=color)
+        slider.set(default)
+        slider.pack()
 
-setup_ui()
-root.mainloop()
+        button = ttk.Button(slider_frame, text=f"Apply {function_name}", command=lambda: self.run_command(function_name))
+        button.pack(pady=5)
+
+        setattr(self, slider_name, slider)
+
+def main():
+    root = tk.Tk()
+    app = ImageProcessorApp(root)
+    root.mainloop()
+
+if __name__ == "__main__":
+    main()
