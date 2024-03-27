@@ -13,6 +13,9 @@
 #include <mutex>
 #include <cstring>
 #include <climits>
+#include <condition_variable>
+#include <queue>
+#include <optional>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -313,14 +316,14 @@ void bucketFillHelper(std::vector<std::vector<RGB>> image) {
     writeBmpSingleThread(BucketFillOutputFilename, bucketFilledImage, false);
     std::cout << "Saved bucket-filled image to \"" << BucketFillOutputFilename << "\"" << std::endl << std::endl;
 
-    // std::cout << "Applying bucket fill using multiple threads (Threshold=" << bucketFillThreshold << ")..." << std::endl << std::endl;
-    // start = std::chrono::high_resolution_clock::now();
-    // bucketFilledImage = applyBucketFillMultipleThreads(image, bucketFillThreshold);
-    // end = std::chrono::high_resolution_clock::now();
-    // elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    // std::cout << "Time taken for applying bucket fill using multiple threads: " << elapsed.count() << " milliseconds." << std::endl << std::endl;
-    // writeBmpSingleThread(BucketFillOutputFilename, bucketFilledImage, false);
-    // std::cout << "Saved bucket-filled image to \"" << BucketFillOutputFilename << "\"" << std::endl << std::endl;
+    std::cout << "Applying bucket fill using multiple threads (Threshold=" << bucketFillThreshold << ")..." << std::endl << std::endl;
+    start = std::chrono::high_resolution_clock::now();
+    bucketFilledImage = applyBucketFillMultipleThreads(image, bucketFillThreshold);
+    end = std::chrono::high_resolution_clock::now();
+    elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Time taken for applying bucket fill using multiple threads: " << elapsed.count() << " milliseconds." << std::endl << std::endl;
+    writeBmpSingleThread(BucketFillOutputFilename, bucketFilledImage, false);
+    std::cout << "Saved bucket-filled image to \"" << BucketFillOutputFilename << "\"" << std::endl << std::endl;
 }
 
 void bilinearResizeHelper(std::vector<std::vector<RGB>> image) {
@@ -1065,7 +1068,7 @@ void applyMotionBlurSegment(const std::vector<std::vector<RGB>>& image, std::vec
 
 // Apply motion blur to the image based on a given motion length with multiple threads
 std::vector<std::vector<RGB>> applyMotionBlurMultipleThreads(const std::vector<std::vector<RGB>>& image, int motionLength) {
-    // Determine the optimal number of threads based on hardware
+    // Determine the optimal number of threads based to use
     const unsigned int numThreads = std::thread::hardware_concurrency();
     int height = image.size(), width = image[0].size(); // Dimensions of the input image
     std::vector<std::vector<RGB>> blurredImage(height, std::vector<RGB>(width)); // Prepare the output image
@@ -1088,14 +1091,61 @@ std::vector<std::vector<RGB>> applyMotionBlurMultipleThreads(const std::vector<s
     return blurredImage; // Return the processed image
 }
 
-// Function to calculate Euclidean distance between two colors in RGB space with multiple threads
+// Function to calculate Euclidean distance between two colors in RGB space with multiple threads (same as single)
 double colorDistanceMultipleThreads(const RGB& color1, const RGB& color2) {
-
+    return std::sqrt(
+        (color1.red - color2.red) * (color1.red - color2.red) +
+        (color1.green - color2.green) * (color1.green - color2.green) +
+        (color1.blue - color2.blue) * (color1.blue - color2.blue)
+    );
 }
 
 // Apply bucket fill to the other image with multiple threads
 std::vector<std::vector<RGB>> applyBucketFillMultipleThreads(const std::vector<std::vector<RGB>>& image, int threshold) {
+    int height = image.size(), width = image[0].size(); // Dimensions of the image
+    const RGB fillColor = {0, 255, 0}; // Define fill color as green
+    std::vector<std::vector<RGB>> bucketFilledImage = image; // Copy of the original image to apply the fill
+    std::vector<std::vector<bool>> visited(height, std::vector<bool>(width, false)); // Keep track of visited pixels
+    
+    // Lambda function to fill starting from a point with offset applied to the seed point. This allows starting the fill from different directions.
+    auto fillFunc = [&](int offsetX, int offsetY) {
+        std::stack<std::pair<int, int>> stack; // Use a stack for depth-first search (DFS)
+        stack.push({bucketFillX + offsetX, bucketFillY + offsetY}); // Starting point with offset
 
+        while (!stack.empty()) {
+            auto [x, y] = stack.top(); // Current position
+            stack.pop();
+
+            // Check bounds and visited status
+            if (x < 0 || x >= width || y < 0 || y >= height || visited[y][x]) continue;
+
+            // Check if current pixel is within the color threshold
+            if (colorDistanceMultipleThreads(image[y][x], image[bucketFillY][bucketFillX]) <= threshold) {
+                bucketFilledImage[y][x] = fillColor; // Apply fill color
+                visited[y][x] = true; // Mark as visited
+
+                // Add neighboring pixels to stack for further processing
+                stack.push({x + 1, y});
+                stack.push({x - 1, y});
+                stack.push({x, y + 1});
+                stack.push({x, y - 1});
+            }
+        }
+    };
+
+    // Create threads for each direction of fill operation starting from the seed point
+    std::thread tAbove(fillFunc, 0, -1); // Thread for filling upwards
+    std::thread tLeft(fillFunc, -1, 0); // Thread for filling leftwards
+    std::thread tRight(fillFunc, 1, 0); // Thread for filling rightwards
+    std::thread tDown(fillFunc, 0, 1); // Thread for filling downwards
+
+    // Wait for all threads to complete their execution
+    tAbove.join();
+    tLeft.join();
+    tRight.join();
+    tDown.join();
+
+    return bucketFilledImage; // Return the image after bucket fill
 }
 
 // Bicubic interpolation kernel based on Catmull-Rom spline with multiple threads
