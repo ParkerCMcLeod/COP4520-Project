@@ -187,7 +187,6 @@ int main(int argc, char* argv[]) {
 
     std::cout << std::endl;
 
-
     createOutFolder(); // Create an out folder
     auto image = parseImageHelper(); // Helper function for parsing image  
 
@@ -418,20 +417,20 @@ void bicubicResizeHelper(std::vector<std::vector<RGB>> image) {
 void nearestNeighborResizeHelper(std::vector<std::vector<RGB>> image) {
     std::cout << "Applying nearest neighbor resizing using a single thread (Output Size=" << resizeWidthNearestNeighbor << "x" << resizeHeightNearestNeighbor << ")..." << std::endl;
     auto start = std::chrono::high_resolution_clock::now();
-    auto nearestNeighborResizeSingleThreaddImage = nearestNeighborResizeSingleThread(image, resizeWidthNearestNeighbor, resizeHeightNearestNeighbor);
+    auto nearestNeighborResizedImage = nearestNeighborResizeSingleThread(image, resizeWidthNearestNeighbor, resizeHeightNearestNeighbor);
     auto end = std::chrono::high_resolution_clock::now();
     auto elapsedSingle = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     std::cout << "Time taken for applying nearest neighbor resizing using a single thread: " << elapsedSingle.count() << " milliseconds." << std::endl;
-    writeBmp(nearestNeighborResizedOutputFilename, nearestNeighborResizeSingleThreaddImage, true, resizeWidthNearestNeighbor, resizeHeightNearestNeighbor);
+    writeBmp(nearestNeighborResizedOutputFilename, nearestNeighborResizedImage, true, resizeWidthNearestNeighbor, resizeHeightNearestNeighbor);
     std::cout << "Saved nearestNeighbor-resized image to \"" << nearestNeighborResizedOutputFilename << "\"" << std::endl;
 
     std::cout << "Applying nearest neighbor resizing using multiple threads (Output Size=" << resizeWidthNearestNeighbor << "x" << resizeHeightNearestNeighbor << ")..." << std::endl;
     start = std::chrono::high_resolution_clock::now();
-    nearestNeighborResizeSingleThreaddImage = nearestNeighborResizeMultipleThreads(image, resizeWidthNearestNeighbor, resizeHeightNearestNeighbor);
+    nearestNeighborResizedImage = nearestNeighborResizeMultipleThreads(image, resizeWidthNearestNeighbor, resizeHeightNearestNeighbor);
     end = std::chrono::high_resolution_clock::now();
     auto elapsedMultiple = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     std::cout << "Time taken for applying nearest neighbor resizing using multiple threads: " << elapsedMultiple.count() << " milliseconds." << std::endl;
-    writeBmp(nearestNeighborResizedOutputFilename, nearestNeighborResizeSingleThreaddImage, true, resizeWidthNearestNeighbor, resizeHeightNearestNeighbor);
+    writeBmp(nearestNeighborResizedOutputFilename, nearestNeighborResizedImage, true, resizeWidthNearestNeighbor, resizeHeightNearestNeighbor);
     std::cout << "Saved nearestNeighbor-resized image to \"" << nearestNeighborResizedOutputFilename << "\"" << std::endl;
 
     double speedupFactor = static_cast<double>(elapsedSingle.count()) / elapsedMultiple.count();
@@ -762,24 +761,26 @@ std::vector<std::vector<RGB>> resizeBilinearSingleThread(const std::vector<std::
 
 // Apply nearest neighbor resizing to the image with one thread
 std::vector<std::vector<RGB>> nearestNeighborResizeSingleThread(const std::vector<std::vector<RGB>>& image, int newWidth, int newHeight) {
-        int imageWidth = image.size();
-        int imageHeight = image[0].size();
+    int imageWidth = image[0].size();
+    int imageHeight = image.size();
 
-        double widthScale = (double)newWidth / imageWidth;
-        double heightScale = (double)newHeight / imageHeight;
-        
-        std::vector<std::vector<RGB>> resizedImage(newWidth, std::vector<RGB>(newHeight));
+    double widthScale = (double)newWidth / imageWidth;
+    double heightScale = (double)newHeight / imageHeight;
+    
+    // Initialize the resizedImage with correct dimensions
+    std::vector<std::vector<RGB>> resizedImage(newHeight, std::vector<RGB>(newWidth));
 
+    for (int y = 0; y < newHeight; y++) {
         for (int x = 0; x < newWidth; x++) {
-            for (int y = 0; y < newHeight; y++) {
-                int originalX = (int)(x / widthScale);
-                int originalY = (int)(y / heightScale);
+            int originalX = (int)(x / widthScale);
+            int originalY = (int)(y / heightScale);
 
-                resizedImage[x][y] = image[originalX][originalY];
-            }
+            // Access elements correctly based on the dimensions
+            resizedImage[y][x] = image[originalY][originalX]; // Notice the order of indices
         }
+    }
 
-        return resizedImage;
+    return resizedImage;
 }
 
 // Save the new image data by copying the original file and replacing the header (for resize) and pixel color data  with one thread
@@ -829,7 +830,7 @@ void writeBmp(const std::string& filename, const std::vector<std::vector<RGB>>& 
     }
 
     // Write the pixel data
-    for (int y = height - 1; y >= 0; --y) {
+    for (int y = 0; y < height; y++) {
         outFile.write(reinterpret_cast<const char*>(image[y].data()), width * sizeof(RGB));
         for (int i = 0; i < rowPadding; ++i) {
             outFile.put(0);
@@ -1367,15 +1368,15 @@ std::vector<std::vector<RGB>> resizeBilinearMultipleThreads(const std::vector<st
 // Apply nearest neighbor resizing to the image with multiple threads
 std::vector<std::vector<RGB>> nearestNeighborResizeMultipleThreads(const std::vector<std::vector<RGB>>& image, int newWidth, int newHeight) {
     // Calculate the original image dimensions
-    int imageWidth = image.size();
-    int imageHeight = image[0].size();
+    int imageWidth = image[0].size();
+    int imageHeight = image.size();
 
     // Calculate the scale factors for width and height
     double widthScale = static_cast<double>(newWidth) / imageWidth;
     double heightScale = static_cast<double>(newHeight) / imageHeight;
 
     // Prepare the vector to hold the resized image
-    std::vector<std::vector<RGB>> resizedImage(newWidth, std::vector<RGB>(newHeight));
+    std::vector<std::vector<RGB>> resizedImage(newHeight, std::vector<RGB>(newWidth));
 
     // Define a worker lambda function to process a portion of the image
     auto worker = [&](int startX, int endX) {
@@ -1386,7 +1387,7 @@ std::vector<std::vector<RGB>> nearestNeighborResizeMultipleThreads(const std::ve
                 int originalY = static_cast<int>(std::floor(y / heightScale));
 
                 // Assign the pixel from the original image to the resized image
-                resizedImage[x][y] = image[originalX][originalY];
+                resizedImage[y][x] = image[originalY][originalX];
             }
         }
     };
@@ -1400,7 +1401,7 @@ std::vector<std::vector<RGB>> nearestNeighborResizeMultipleThreads(const std::ve
     for (unsigned int i = 0; i < numThreads; ++i) {
         int startX = i * chunkSize; // Calculate the start X for this thread
         int endX = (i == numThreads - 1) ? newWidth : startX + chunkSize; // Calculate the end X, ensuring the last thread covers the remainder
-        futures.emplace_back(std::async(std::launch::async, worker, startX, endX)); // Launch the thread asynchronously
+        futures.emplace_back(std::async(std::launch::async, worker, startX, endX)); // Launch the thread asynch
     }
 
     // Wait for all threads to complete
