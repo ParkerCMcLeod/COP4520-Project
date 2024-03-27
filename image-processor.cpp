@@ -356,14 +356,14 @@ void bicubicResizeHelper(std::vector<std::vector<RGB>> image) {
     writeBmpSingleThread(BicubicResizedOutputFilename, bicubicResizedImage, true, resizeWidthBicubic, resizeHeightBicubic);
     std::cout << "Saved bicubic-resized image to \"" << BicubicResizedOutputFilename << "\"" << std::endl << std::endl;
 
-    // std::cout << "Applying bicubic resizing using multiple threads (Output Size=" << resizeWidthBicubic << "x" << resizeHeightBicubic << ")..." << std::endl << std::endl;
-    // start = std::chrono::high_resolution_clock::now();
-    // bicubicResizedImage = resizeBicubicMultipleThreads(image, resizeWidthBicubic, resizeHeightBicubic);
-    // end = std::chrono::high_resolution_clock::now();
-    // elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    // std::cout << "Time taken for applying bicubic resizing using multiple threads: " << elapsed.count() << " milliseconds." << std::endl << std::endl;
-    // writeBmpSingleThread(BicubicResizedOutputFilename, bicubicResizedImage, true, resizeWidthBicubic, resizeHeightBicubic);
-    // std::cout << "Saved bicubic-resized image to \"" << BicubicResizedOutputFilename << "\"" << std::endl << std::endl;
+    std::cout << "Applying bicubic resizing using multiple threads (Output Size=" << resizeWidthBicubic << "x" << resizeHeightBicubic << ")..." << std::endl << std::endl;
+    start = std::chrono::high_resolution_clock::now();
+    bicubicResizedImage = resizeBicubicMultipleThreads(image, resizeWidthBicubic, resizeHeightBicubic);
+    end = std::chrono::high_resolution_clock::now();
+    elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Time taken for applying bicubic resizing using multiple threads: " << elapsed.count() << " milliseconds." << std::endl << std::endl;
+    writeBmpSingleThread(BicubicResizedOutputFilename, bicubicResizedImage, true, resizeWidthBicubic, resizeHeightBicubic);
+    std::cout << "Saved bicubic-resized image to \"" << BicubicResizedOutputFilename << "\"" << std::endl << std::endl;
 }
 
 void nearestNeighborResizeHelper(std::vector<std::vector<RGB>> image) {
@@ -1148,19 +1148,100 @@ std::vector<std::vector<RGB>> applyBucketFillMultipleThreads(const std::vector<s
     return bucketFilledImage; // Return the image after bucket fill
 }
 
-// Bicubic interpolation kernel based on Catmull-Rom spline with multiple threads
+// Bicubic interpolation kernel based on Catmull-Rom spline with multiple threads (same as single)
 double cubicInterpolateMultipleThreads(double p[4], double x) {
-
+    // Performs the cubic interpolation formula on a set of four points (p[0] to p[3]) and a parameter x
+    return p[1] + 0.5 * x * (p[2] - p[0] + x * (2.0 * p[0] - 5.0 * p[1] + 4.0 * p[2] - p[3] + x * (3.0 * (p[1] - p[2]) + p[3] - p[0])));
 }
 
-// Function to perform bicubic interpolation on a 4x4 patch of an image with multiple threads
+// Function to perform bicubic interpolation on a 4x4 patch of an image with multiple threads (same as single)
 double bicubicInterpolateMultipleThreads(double arr[4][4], double x, double y) {
+    double colArr[4];
+    // Interpolates the values along the y-axis
+    for (int i = 0; i < 4; i++) {
+        colArr[i] = cubicInterpolateSingleThread(arr[i], y);
+    }
+    // Interpolates the result along the x-axis
+    return cubicInterpolateSingleThread(colArr, x);
+}
 
+void processSegmentMultipleThreads(const std::vector<std::vector<RGB>>& image, std::vector<std::vector<RGB>>& resized, int startRow, int endRow, int newWidth, double xRatio, double yRatio) {
+    // Determine the original image's width and height
+    int imgWidth = image[0].size();
+    int imgHeight = image.size();
+
+    // Iterate over each row in the segment
+    for (int i = startRow; i < endRow; ++i) {
+        // Iterate over each column in the new, resized image
+        for (int j = 0; j < newWidth; ++j) {
+            // Calculate the corresponding x and y coordinates in the original image
+            double x = (j + 0.5) * xRatio - 0.5;
+            double y = (i + 0.5) * yRatio - 0.5;
+
+            // Convert coordinates to integers for pixel indices, with fractional part for interpolation
+            int xInt = int(x);
+            int yInt = int(y);
+
+            double xDiff = x - xInt;
+            double yDiff = y - yInt;
+
+            // Arrays to store the pixel values from the 4x4 neighborhood for each color channel
+            double redVals[4][4], greenVals[4][4], blueVals[4][4];
+
+            // Collect the 4x4 neighborhood pixel values around the current point
+            for (int m = -1; m <= 2; ++m) {
+                for (int n = -1; n <= 2; ++n) {
+                    // Clamp the neighbor coordinates to stay within the image boundaries
+                    int xN = std::clamp(xInt + n, 0, imgWidth - 1);
+                    int yM = std::clamp(yInt + m, 0, imgHeight - 1);
+
+                    // Fetch the pixel from the original image
+                    const RGB& pixel = image[yM][xN];
+                    // Store the color values in the arrays
+                    redVals[m + 1][n + 1] = pixel.red;
+                    greenVals[m + 1][n + 1] = pixel.green;
+                    blueVals[m + 1][n + 1] = pixel.blue;
+                }
+            }
+
+            // Perform bicubic interpolation for each color channel and clamp the results
+            resized[i][j].red = std::clamp(static_cast<int>(bicubicInterpolateMultipleThreads(redVals, xDiff, yDiff)), 0, 255);
+            resized[i][j].green = std::clamp(static_cast<int>(bicubicInterpolateMultipleThreads(greenVals, xDiff, yDiff)), 0, 255);
+            resized[i][j].blue = std::clamp(static_cast<int>(bicubicInterpolateMultipleThreads(blueVals, xDiff, yDiff)), 0, 255);
+        }
+    }
 }
 
 // Function to resize an image using bicubic interpolation with multiple threads
 std::vector<std::vector<RGB>> resizeBicubicMultipleThreads(const std::vector<std::vector<RGB>>& image, int newWidth, int newHeight) {
+    // Determine the height of the original image
+    int imgHeight = image.size();
+    // Create a resized image placeholder with the desired dimensions
+    std::vector<std::vector<RGB>> resized(newHeight, std::vector<RGB>(newWidth));
+    // Calculate the ratios between the new and old dimensions
+    double xRatio = static_cast<double>(image[0].size()) / newWidth;
+    double yRatio = static_cast<double>(imgHeight) / newHeight;
 
+    // Determine the number of threads to use based on hardware concurrency
+    const int threadCount = std::thread::hardware_concurrency();
+    std::vector<std::thread> threads(threadCount);
+
+    // Calculate the number of rows each thread should process
+    int rowsPerThread = newHeight / threadCount;
+    for (int i = 0; i < threadCount; ++i) {
+        // Calculate the start and end row for each thread
+        int startRow = i * rowsPerThread;
+        int endRow = (i == (threadCount - 1) ? newHeight : startRow + rowsPerThread); // Ensure the last thread covers the remainder
+        // Launch the thread to process its segment of the image
+        threads[i] = std::thread(processSegmentMultipleThreads, std::cref(image), std::ref(resized), startRow, endRow, newWidth, xRatio, yRatio);
+    }
+
+    // Wait for all threads to complete their work
+    for (auto& t : threads) {
+        t.join();
+    }
+
+    return resized;
 }
 
 // Function to resize an image using bilinear interpolation with multiple threads
