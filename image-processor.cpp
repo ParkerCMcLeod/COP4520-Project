@@ -17,7 +17,7 @@
 #include <queue>
 #include <optional>
 #include <future>
-
+#include <iomanip>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -185,6 +185,9 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+    std::cout << std::endl;
+
+
     createOutFolder(); // Create an out folder
     auto image = parseImageHelper(); // Helper function for parsing image  
 
@@ -245,163 +248,195 @@ void createOutFolder() {
 }
 
 std::vector<std::vector<RGB>> parseImageHelper() {
-    std::cout << "Parsing input image using a single thread..." << std::endl << std::endl;
+    std::cout << "Parsing input image using a single thread..." << std::endl;
     auto start = std::chrono::high_resolution_clock::now();
     auto image = readBmpSingleThread(InputFilename);
     auto end = std::chrono::high_resolution_clock::now();
-    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "Time taken for parsing input image using a single thread (" << (image[0].size() * image.size()) << "px): " << elapsed.count() << " milliseconds." << std::endl << std::endl;
+    auto elapsedSingle = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Time taken for parsing input image using a single thread (" << (image[0].size() * image.size()) << "px): " << elapsedSingle.count() << " milliseconds." << std::endl;
 
-    std::cout << "Parsing input image using multiple threads..." << std::endl << std::endl;
+    std::cout << "Parsing input image using multiple threads..." << std::endl;
     start = std::chrono::high_resolution_clock::now();
     image = readBmpMultipleThreads(InputFilename);
     end = std::chrono::high_resolution_clock::now();
-    elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "Time taken for parsing input image using multiple threads (" << (image[0].size() * image.size()) << "px): " << elapsed.count() << " milliseconds." << std::endl << std::endl;
+    auto elapsedMultiple = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Time taken for parsing input image using multiple threads (" << (image[0].size() * image.size()) << "px): " << elapsedMultiple.count() << " milliseconds." << std::endl;
+
+    double speedupFactor = static_cast<double>(elapsedSingle.count()) / elapsedMultiple.count();
+
+    std::cout << "Multithreading speedup factor: " << std::fixed << std::setprecision(1) << speedupFactor << "x" << std::endl << std::endl;
 
     return image;
 }
 
 void gaussianBlurHelper(std::vector<std::vector<RGB>> image) {
-    std::cout << "Applying Gaussian blur using a single thread (sigma=" << sigma << ")..." << std::endl << std::endl;
+    std::cout << "Applying Gaussian blur using a single thread (sigma=" << sigma << ")..." << std::endl;
     auto start = std::chrono::high_resolution_clock::now();
     auto kernel = generateGaussianKernelSingleThread(sigma);
     auto blurredImage = applyGaussianBlurSingleThread(image, kernel);
     auto end = std::chrono::high_resolution_clock::now();
-    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "Time taken for applying Gaussian blur using a single thread: " << elapsed.count() << " milliseconds." << std::endl << std::endl;
+    auto elapsedSingle = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Time taken for applying Gaussian blur using a single thread: " << elapsedSingle.count() << " milliseconds." << std::endl;
     writeBmp(GaussianBlurredOutputFilename, blurredImage, false);
-    std::cout << "Saved gaussian blurred image to \"" << GaussianBlurredOutputFilename << "\"" << std::endl << std::endl;
+    std::cout << "Saved gaussian blurred image to \"" << GaussianBlurredOutputFilename << "\"" << std::endl;
 
-    std::cout << "Applying Gaussian blur using multiple threads (sigma=" << sigma << ")..." << std::endl << std::endl;
+    std::cout << "Applying Gaussian blur using multiple threads (sigma=" << sigma << ")..." << std::endl;
     start = std::chrono::high_resolution_clock::now();
     kernel = generateGaussianKernelMultipleThreads(sigma);
     blurredImage = applyGaussianBlurMultipleThreads(image, kernel);
     end = std::chrono::high_resolution_clock::now();
-    elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "Time taken for applying Gaussian blur using multiple threads: " << elapsed.count() << " milliseconds." << std::endl << std::endl;
+    auto elapsedMultiple = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Time taken for applying Gaussian blur using multiple threads: " << elapsedMultiple.count() << " milliseconds." << std::endl;
     writeBmp(GaussianBlurredOutputFilename, blurredImage, false);
-    std::cout << "Saved gaussian blurred image to \"" << GaussianBlurredOutputFilename << "\"" << std::endl << std::endl;
+    std::cout << "Saved gaussian blurred image to \"" << GaussianBlurredOutputFilename << "\"" << std::endl;
+
+    double speedupFactor = static_cast<double>(elapsedSingle.count()) / elapsedMultiple.count();
+
+    std::cout << "Multithreading speedup factor: " << std::fixed << std::setprecision(1) << speedupFactor << "x" << std::endl << std::endl;
 }
 
 void boxBlurHelper(std::vector<std::vector<RGB>> image) {
-    std::cout << "Applying box blur using a single thread (boxSize=" << boxSize << ")..." << std::endl << std::endl;
+    std::cout << "Applying box blur using a single thread (boxSize=" << boxSize << ")..." << std::endl;
     auto start = std::chrono::high_resolution_clock::now();
     auto boxBlurredImage = applyBoxBlurSingleThread(image, boxSize);
     auto end = std::chrono::high_resolution_clock::now();
-    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "Time taken for applying box blur using a single thread: " << elapsed.count() << " milliseconds." << std::endl << std::endl;
+    auto elapsedSingle = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Time taken for applying box blur using a single thread: " << elapsedSingle.count() << " milliseconds." << std::endl;
     writeBmp(BoxBlurredOutputFilename, boxBlurredImage, false);
-    std::cout << "Saved box-blurred image to \"" << BoxBlurredOutputFilename << "\"" << std::endl << std::endl;
+    std::cout << "Saved box-blurred image to \"" << BoxBlurredOutputFilename << "\"" << std::endl;
 
-    std::cout << "Applying box blur using multiple threads (boxSize=" << boxSize << ")..." << std::endl << std::endl;
+    std::cout << "Applying box blur using multiple threads (boxSize=" << boxSize << ")..." << std::endl;
     start = std::chrono::high_resolution_clock::now();
     boxBlurredImage = applyBoxBlurMultipleThreads(image, boxSize);
     end = std::chrono::high_resolution_clock::now();
-    elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "Time taken for applying box blur using multiple threads: " << elapsed.count() << " milliseconds." << std::endl << std::endl;
+    auto elapsedMultiple = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Time taken for applying box blur using multiple threads: " << elapsedMultiple.count() << " milliseconds." << std::endl;
     writeBmp(BoxBlurredOutputFilename, boxBlurredImage, false);
-    std::cout << "Saved box-blurred image to \"" << BoxBlurredOutputFilename << "\"" << std::endl << std::endl;
+    std::cout << "Saved box-blurred image to \"" << BoxBlurredOutputFilename << "\"" << std::endl;
+
+    double speedupFactor = static_cast<double>(elapsedSingle.count()) / elapsedMultiple.count();
+
+    std::cout << "Multithreading speedup factor: " << std::fixed << std::setprecision(1) << speedupFactor << "x" << std::endl << std::endl;
 }
 
 void motionBlurHelper(std::vector<std::vector<RGB>> image) {
-    std::cout << "Applying motion blur using a single thread (motionLength=" << motionLength << ")..." << std::endl << std::endl;
+    std::cout << "Applying motion blur using a single thread (motionLength=" << motionLength << ")..." << std::endl;
     auto start = std::chrono::high_resolution_clock::now();
     auto motionBlurredImage = applyMotionBlurSingleThread(image, motionLength);
     auto end = std::chrono::high_resolution_clock::now();
-    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "Time taken for applying motion blur using a single thread: " << elapsed.count() << " milliseconds." << std::endl << std::endl;
+    auto elapsedSingle = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Time taken for applying motion blur using a single thread: " << elapsedSingle.count() << " milliseconds." << std::endl;
     writeBmp(MotionBlurredOutputFilename, motionBlurredImage, false);
-    std::cout << "Saved motion-blurred image to \"" << MotionBlurredOutputFilename << "\"" << std::endl << std::endl;
+    std::cout << "Saved motion-blurred image to \"" << MotionBlurredOutputFilename << "\"" << std::endl;
 
-    std::cout << "Applying motion blur using multiple threads (motionLength=" << motionLength << ")..." << std::endl << std::endl;
+    std::cout << "Applying motion blur using multiple threads (motionLength=" << motionLength << ")..." << std::endl;
     start = std::chrono::high_resolution_clock::now();
     motionBlurredImage = applyMotionBlurMultipleThreads(image, motionLength);
     end = std::chrono::high_resolution_clock::now();
-    elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "Time taken for applying motion blur using multiple threads: " << elapsed.count() << " milliseconds." << std::endl << std::endl;
+    auto elapsedMultiple = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Time taken for applying motion blur using multiple threads: " << elapsedMultiple.count() << " milliseconds." << std::endl;
     writeBmp(MotionBlurredOutputFilename, motionBlurredImage, false);
-    std::cout << "Saved motion-blurred image to \"" << MotionBlurredOutputFilename << "\"" << std::endl << std::endl;
+    std::cout << "Saved motion-blurred image to \"" << MotionBlurredOutputFilename << "\"" << std::endl;
+
+    double speedupFactor = static_cast<double>(elapsedSingle.count()) / elapsedMultiple.count();
+
+    std::cout << "Multithreading speedup factor: " << std::fixed << std::setprecision(1) << speedupFactor << "x" << std::endl << std::endl;
 }
 
 void bucketFillHelper(std::vector<std::vector<RGB>> image) {
-    std::cout << "Applying bucket fill using a single thread (Threshold=" << bucketFillThreshold << ")..." << std::endl << std::endl;
+    std::cout << "Applying bucket fill using a single thread (Threshold=" << bucketFillThreshold << ")..." << std::endl;
     auto start = std::chrono::high_resolution_clock::now();
     auto bucketFilledImage = applyBucketFillSingleThread(image, bucketFillThreshold);
     auto end = std::chrono::high_resolution_clock::now();
-    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "Time taken for applying bucket fill using a single thread: " << elapsed.count() << " milliseconds." << std::endl << std::endl;
+    auto elapsedSingle = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Time taken for applying bucket fill using a single thread: " << elapsedSingle.count() << " milliseconds." << std::endl;
     writeBmp(BucketFillOutputFilename, bucketFilledImage, false);
-    std::cout << "Saved bucket-filled image to \"" << BucketFillOutputFilename << "\"" << std::endl << std::endl;
+    std::cout << "Saved bucket-filled image to \"" << BucketFillOutputFilename << "\"" << std::endl;
 
-    std::cout << "Applying bucket fill using multiple threads (Threshold=" << bucketFillThreshold << ")..." << std::endl << std::endl;
+    std::cout << "Applying bucket fill using multiple threads (Threshold=" << bucketFillThreshold << ")..." << std::endl;
     start = std::chrono::high_resolution_clock::now();
     bucketFilledImage = applyBucketFillMultipleThreads(image, bucketFillThreshold);
     end = std::chrono::high_resolution_clock::now();
-    elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "Time taken for applying bucket fill using multiple threads: " << elapsed.count() << " milliseconds." << std::endl << std::endl;
+    auto elapsedMultiple = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Time taken for applying bucket fill using multiple threads: " << elapsedMultiple.count() << " milliseconds." << std::endl;
     writeBmp(BucketFillOutputFilename, bucketFilledImage, false);
-    std::cout << "Saved bucket-filled image to \"" << BucketFillOutputFilename << "\"" << std::endl << std::endl;
+    std::cout << "Saved bucket-filled image to \"" << BucketFillOutputFilename << "\"" << std::endl;
+
+    double speedupFactor = static_cast<double>(elapsedSingle.count()) / elapsedMultiple.count();
+
+    std::cout << "Multithreading speedup factor: " << std::fixed << std::setprecision(1) << speedupFactor << "x" << std::endl << std::endl;
 }
 
 void bilinearResizeHelper(std::vector<std::vector<RGB>> image) {
-    std::cout << "Applying bilinear resizing using a single thread (Output Size=" << resizeWidthBilinear << "x" << resizeHeightBilinear << ")..." << std::endl << std::endl;
+    std::cout << "Applying bilinear resizing using a single thread (Output Size=" << resizeWidthBilinear << "x" << resizeHeightBilinear << ")..." << std::endl;
     auto start = std::chrono::high_resolution_clock::now();
     auto bilinearResizedImage = resizeBilinearSingleThread(image, resizeWidthBilinear, resizeHeightBilinear);
     auto end = std::chrono::high_resolution_clock::now();
-    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "Time taken for applying bilinear resizing using a single thread: " << elapsed.count() << " milliseconds." << std::endl << std::endl;
+    auto elapsedSingle = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Time taken for applying bilinear resizing using a single thread: " << elapsedSingle.count() << " milliseconds." << std::endl;
     writeBmp(BilinearResizedOutputFilename, bilinearResizedImage, true, resizeWidthBilinear, resizeHeightBilinear);
-    std::cout << "Saved bilinear-resized image to \"" << BilinearResizedOutputFilename << "\"" << std::endl << std::endl;
+    std::cout << "Saved bilinear-resized image to \"" << BilinearResizedOutputFilename << "\"" << std::endl;
 
-    std::cout << "Applying bilinear resizing using multiple threads (Output Size=" << resizeWidthBilinear << "x" << resizeHeightBilinear << ")..." << std::endl << std::endl;
+    std::cout << "Applying bilinear resizing using multiple threads (Output Size=" << resizeWidthBilinear << "x" << resizeHeightBilinear << ")..." << std::endl;
     start = std::chrono::high_resolution_clock::now();
     bilinearResizedImage = resizeBilinearMultipleThreads(image, resizeWidthBilinear, resizeHeightBilinear);
     end = std::chrono::high_resolution_clock::now();
-    elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "Time taken for applying bilinear resizing using multiple threads: " << elapsed.count() << " milliseconds." << std::endl << std::endl;
+    auto elapsedMultiple = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Time taken for applying bilinear resizing using multiple threads: " << elapsedMultiple.count() << " milliseconds." << std::endl;
     writeBmp(BilinearResizedOutputFilename, bilinearResizedImage, true, resizeWidthBilinear, resizeHeightBilinear);
-    std::cout << "Saved bilinear-resized image to \"" << BilinearResizedOutputFilename << "\"" << std::endl << std::endl;
+    std::cout << "Saved bilinear-resized image to \"" << BilinearResizedOutputFilename << "\"" << std::endl;
+
+    double speedupFactor = static_cast<double>(elapsedSingle.count()) / elapsedMultiple.count();
+
+    std::cout << "Multithreading speedup factor: " << std::fixed << std::setprecision(1) << speedupFactor << "x" << std::endl << std::endl;
 }
 
 void bicubicResizeHelper(std::vector<std::vector<RGB>> image) {
-    std::cout << "Applying bicubic resizing using a single thread (Output Size=" << resizeWidthBicubic << "x" << resizeHeightBicubic << ")..." << std::endl << std::endl;
+    std::cout << "Applying bicubic resizing using a single thread (Output Size=" << resizeWidthBicubic << "x" << resizeHeightBicubic << ")..." << std::endl;
     auto start = std::chrono::high_resolution_clock::now();
     auto bicubicResizedImage = resizeBicubicSingleThread(image, resizeWidthBicubic, resizeHeightBicubic);
     auto end = std::chrono::high_resolution_clock::now();
-    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "Time taken for applying bicubic resizing using a single thread: " << elapsed.count() << " milliseconds." << std::endl << std::endl;
+    auto elapsedSingle = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Time taken for applying bicubic resizing using a single thread: " << elapsedSingle.count() << " milliseconds." << std::endl;
     writeBmp(BicubicResizedOutputFilename, bicubicResizedImage, true, resizeWidthBicubic, resizeHeightBicubic);
-    std::cout << "Saved bicubic-resized image to \"" << BicubicResizedOutputFilename << "\"" << std::endl << std::endl;
+    std::cout << "Saved bicubic-resized image to \"" << BicubicResizedOutputFilename << "\"" << std::endl;
 
-    std::cout << "Applying bicubic resizing using multiple threads (Output Size=" << resizeWidthBicubic << "x" << resizeHeightBicubic << ")..." << std::endl << std::endl;
+    std::cout << "Applying bicubic resizing using multiple threads (Output Size=" << resizeWidthBicubic << "x" << resizeHeightBicubic << ")..." << std::endl;
     start = std::chrono::high_resolution_clock::now();
     bicubicResizedImage = resizeBicubicMultipleThreads(image, resizeWidthBicubic, resizeHeightBicubic);
     end = std::chrono::high_resolution_clock::now();
-    elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "Time taken for applying bicubic resizing using multiple threads: " << elapsed.count() << " milliseconds." << std::endl << std::endl;
+    auto elapsedMultiple = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Time taken for applying bicubic resizing using multiple threads: " << elapsedMultiple.count() << " milliseconds." << std::endl;
     writeBmp(BicubicResizedOutputFilename, bicubicResizedImage, true, resizeWidthBicubic, resizeHeightBicubic);
-    std::cout << "Saved bicubic-resized image to \"" << BicubicResizedOutputFilename << "\"" << std::endl << std::endl;
+    std::cout << "Saved bicubic-resized image to \"" << BicubicResizedOutputFilename << "\"" << std::endl;
+
+    double speedupFactor = static_cast<double>(elapsedSingle.count()) / elapsedMultiple.count();
+
+    std::cout << "Multithreading speedup factor: " << std::fixed << std::setprecision(1) << speedupFactor << "x" << std::endl << std::endl;
 }
 
 void nearestNeighborResizeHelper(std::vector<std::vector<RGB>> image) {
-    std::cout << "Applying nearest neighbor resizing using a single thread (Output Size=" << resizeWidthNearestNeighbor << "x" << resizeHeightNearestNeighbor << ")..." << std::endl << std::endl;
+    std::cout << "Applying nearest neighbor resizing using a single thread (Output Size=" << resizeWidthNearestNeighbor << "x" << resizeHeightNearestNeighbor << ")..." << std::endl;
     auto start = std::chrono::high_resolution_clock::now();
     auto nearestNeighborResizeSingleThreaddImage = nearestNeighborResizeSingleThread(image, resizeWidthNearestNeighbor, resizeHeightNearestNeighbor);
     auto end = std::chrono::high_resolution_clock::now();
-    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "Time taken for applying nearest neighbor resizing using a single thread: " << elapsed.count() << " milliseconds." << std::endl << std::endl;
+    auto elapsedSingle = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Time taken for applying nearest neighbor resizing using a single thread: " << elapsedSingle.count() << " milliseconds." << std::endl;
     writeBmp(nearestNeighborResizedOutputFilename, nearestNeighborResizeSingleThreaddImage, true, resizeWidthNearestNeighbor, resizeHeightNearestNeighbor);
-    std::cout << "Saved nearestNeighbor-resized image to \"" << nearestNeighborResizedOutputFilename << "\"" << std::endl << std::endl;
+    std::cout << "Saved nearestNeighbor-resized image to \"" << nearestNeighborResizedOutputFilename << "\"" << std::endl;
 
-    std::cout << "Applying nearest neighbor resizing using multiple threads (Output Size=" << resizeWidthNearestNeighbor << "x" << resizeHeightNearestNeighbor << ")..." << std::endl << std::endl;
+    std::cout << "Applying nearest neighbor resizing using multiple threads (Output Size=" << resizeWidthNearestNeighbor << "x" << resizeHeightNearestNeighbor << ")..." << std::endl;
     start = std::chrono::high_resolution_clock::now();
     nearestNeighborResizeSingleThreaddImage = nearestNeighborResizeMultipleThreads(image, resizeWidthNearestNeighbor, resizeHeightNearestNeighbor);
     end = std::chrono::high_resolution_clock::now();
-    elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "Time taken for applying nearest neighbor resizing using multiple threads: " << elapsed.count() << " milliseconds." << std::endl << std::endl;
+    auto elapsedMultiple = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Time taken for applying nearest neighbor resizing using multiple threads: " << elapsedMultiple.count() << " milliseconds." << std::endl;
     writeBmp(nearestNeighborResizedOutputFilename, nearestNeighborResizeSingleThreaddImage, true, resizeWidthNearestNeighbor, resizeHeightNearestNeighbor);
-    std::cout << "Saved nearestNeighbor-resized image to \"" << nearestNeighborResizedOutputFilename << "\"" << std::endl << std::endl;
+    std::cout << "Saved nearestNeighbor-resized image to \"" << nearestNeighborResizedOutputFilename << "\"" << std::endl;
+
+    double speedupFactor = static_cast<double>(elapsedSingle.count()) / elapsedMultiple.count();
+
+    std::cout << "Multithreading speedup factor: " << std::fixed << std::setprecision(1) << speedupFactor << "x" << std::endl << std::endl;
 }
 
 
