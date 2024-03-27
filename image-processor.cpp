@@ -10,6 +10,8 @@
 #include <tuple>
 #include <unordered_map>
 #include <vector>
+#include <atomic>
+#include <pthread.h>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -707,9 +709,74 @@ void writeBmpSingleThread(const std::string& filename, const std::vector<std::ve
     }
 }
 
+struct ThreadData {
+    int startRow, endRow;
+    std::string filename;
+    std::vector<std::vector<RGB>>* image;
+    int width, rowPadding;
+};
+
+void* readRows(void* arg) {
+    ThreadData* data = reinterpret_cast<ThreadData*>(arg);
+    std::ifstream bmpFile(data->filename, std::ios::binary);
+    if (!bmpFile) {
+        std::cerr << "Could not open BMP file!" << std::endl;
+        return nullptr;
+    }
+    
+    // Each thread seeks to its starting position before reading
+    int dataSize = data->width * sizeof(RGB) + data->rowPadding;
+    for (int y = data->startRow; y < data->endRow; y++) {
+        bmpFile.seekg(54 + y * dataSize, bmpFile.beg);
+        bmpFile.read(reinterpret_cast<char*>((*data->image)[y].data()), data->width * sizeof(RGB));
+        bmpFile.ignore(data->rowPadding); // Ignore padding
+    }
+    
+    return nullptr;
+}
+
 // Read bitmap images with many threads
 std::vector<std::vector<RGB>> readBmpMultipleThreads(const std::string& filename) {
+    // read header for width,size
+    std::ifstream bmpFile(filename, std::ios::binary);
+    if (!bmpFile) {
+        std::cerr << "Could not open BMP file!" << std::endl;
+        return {};
+    }
 
+    int32_t width, height;
+    bmpFile.seekg(18);
+    bmpFile.read(reinterpret_cast<char*>(&width), sizeof(width));
+    bmpFile.read(reinterpret_cast<char*>(&height), sizeof(height));
+    int rowPadding = (4 - (width * 3) % 4) % 4;
+
+    // create rgb vector
+    std::vector<std::vector<RGB>> image(height, std::vector<RGB>(width));
+
+    // Determine the number of threads to use
+    unsigned numThreads = std::thread::hardware_concurrency();
+    std::vector<pthread_t> threads(numThreads);
+    std::vector<ThreadData> threadData(numThreads);
+
+    // start thread queue
+    // each thread reads a row and writes to rgb vector
+    int rowsPerThread = height / numThreads;
+    for (unsigned i = 0; i < numThreads; ++i) {
+        threadData[i].startRow = i * rowsPerThread;
+        threadData[i].endRow = (i == numThreads - 1) ? height : (i + 1) * rowsPerThread;
+        threadData[i].filename = filename;
+        threadData[i].image = &image;
+        threadData[i].width = width;
+        threadData[i].rowPadding = rowPadding;
+
+        pthread_create(&threads[i], nullptr, readRows, &threadData[i]);
+    }
+
+    for (unsigned i = 0; i < numThreads; ++i) {
+        pthread_join(threads[i], nullptr);
+    }
+
+    return image;
 }
 
 // Generate the Gaussian kernel with many threads
