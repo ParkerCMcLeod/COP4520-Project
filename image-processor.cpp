@@ -12,13 +12,8 @@
 #include <vector>
 #include <atomic>
 #include <pthread.h>
-
-#ifdef _WIN32
-#include <windows.h>
-#else
 #include <sys/stat.h>
 #include <sys/types.h>
-#endif
 
 
 std::string InputFilename; // Input
@@ -835,6 +830,6 @@ std::vector<std::vector<RGB>> nearestNeighborResizeMultipleThreads(const std::ve
 }
 
 // Save the new image data by copying the original file and replacing the header (for resize) and pixel color data  with many threads
-void writeBmpMultipleThreads(const std::string& filename, const std::vector<std::vector<RGB>>& image, bool resize, int resizedWidth=-1, int resizedHeight=-1) {
+void writeBmpMultipleThreads(const std::string& filename, const std::vector<std::vector<RGB>>& image, bool resize, int resizedWidth, int resizedHeight) {
 
 }

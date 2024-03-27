@@ -7,18 +7,10 @@ CXX=g++
 # Compiler flags
 CXXFLAGS=-std=c++2a -pthread
 
-# Target executable name
-ifeq ($(OS),Windows_NT)
-    TARGET=image-processor.exe
-    RM=del /Q
-    FIXPATH = $(subst /,\,$1)
-    PIP=pip
-else
-    TARGET=image-processor
-    RM=rm -f
-    FIXPATH = $1
-    PIP=pip
-endif
+TARGET=image-processor
+RM=rm -f
+FIXPATH = $1
+PIP=pip
 
 # Source files
 SOURCES=image-processor.cpp

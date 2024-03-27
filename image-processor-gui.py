@@ -10,7 +10,7 @@ class ImageProcessorApp:
 
     def setup_ui(self):
         self.root.title("Image Processor")
-        self.set_window_position(1000, 700)
+        self.set_window_position(1200, 800)
 
         controls_frame = tk.Frame(self.root, bg='#f0f0f0', bd=10)
         right_section_frame = tk.Frame(self.root, bg='#f0f0f0')
