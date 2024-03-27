@@ -1,20 +1,18 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
-#include <cstdint>
 #include <fstream>
 #include <functional>
 #include <iostream>
 #include <stack>
 #include <string>
-#include <tuple>
 #include <unordered_map>
 #include <vector>
 #include <atomic>
 #include <thread>
 #include <mutex>
 #include <cstring>
-
+#include <climits>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -266,69 +264,123 @@ void gaussianBlurHelper(std::vector<std::vector<RGB>> image) {
 }
 
 void boxBlurHelper(std::vector<std::vector<RGB>> image) {
-    std::cout << "Applying box blur (boxSize=" << boxSize << ")..." << std::endl << std::endl;
+    std::cout << "Applying box blur using a single thread (boxSize=" << boxSize << ")..." << std::endl << std::endl;
     auto start = std::chrono::high_resolution_clock::now();
     auto boxBlurredImage = applyBoxBlurSingleThread(image, boxSize);
     auto end = std::chrono::high_resolution_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "Time taken for applying box blur: " << elapsed.count() << " milliseconds." << std::endl << std::endl;
+    std::cout << "Time taken for applying box blur using a single thread: " << elapsed.count() << " milliseconds." << std::endl << std::endl;
+    writeBmpSingleThread(BoxBlurredOutputFilename, boxBlurredImage, false);
+    std::cout << "Saved box-blurred image to \"" << BoxBlurredOutputFilename << "\"" << std::endl << std::endl;
+
+    std::cout << "Applying box blur using multiple threads (boxSize=" << boxSize << ")..." << std::endl << std::endl;
+    start = std::chrono::high_resolution_clock::now();
+    boxBlurredImage = applyBoxBlurMultipleThreads(image, boxSize);
+    end = std::chrono::high_resolution_clock::now();
+    elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Time taken for applying box blur using multiple threads: " << elapsed.count() << " milliseconds." << std::endl << std::endl;
     writeBmpSingleThread(BoxBlurredOutputFilename, boxBlurredImage, false);
     std::cout << "Saved box-blurred image to \"" << BoxBlurredOutputFilename << "\"" << std::endl << std::endl;
 }
 
 void motionBlurHelper(std::vector<std::vector<RGB>> image) {
-    std::cout << "Applying motion blur (motionLength=" << motionLength << ")..." << std::endl << std::endl;
+    std::cout << "Applying motion blur using a single thread (motionLength=" << motionLength << ")..." << std::endl << std::endl;
     auto start = std::chrono::high_resolution_clock::now();
     auto motionBlurredImage = applyMotionBlurSingleThread(image, motionLength);
     auto end = std::chrono::high_resolution_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "Time taken for applying motion blur: " << elapsed.count() << " milliseconds." << std::endl << std::endl;
+    std::cout << "Time taken for applying motion blur using a single thread: " << elapsed.count() << " milliseconds." << std::endl << std::endl;
+    writeBmpSingleThread(MotionBlurredOutputFilename, motionBlurredImage, false);
+    std::cout << "Saved motion-blurred image to \"" << MotionBlurredOutputFilename << "\"" << std::endl << std::endl;
+
+    std::cout << "Applying motion blur using multiple threads (motionLength=" << motionLength << ")..." << std::endl << std::endl;
+    start = std::chrono::high_resolution_clock::now();
+    motionBlurredImage = applyMotionBlurMultipleThreads(image, motionLength);
+    end = std::chrono::high_resolution_clock::now();
+    elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Time taken for applying motion blur using multiple threads: " << elapsed.count() << " milliseconds." << std::endl << std::endl;
     writeBmpSingleThread(MotionBlurredOutputFilename, motionBlurredImage, false);
     std::cout << "Saved motion-blurred image to \"" << MotionBlurredOutputFilename << "\"" << std::endl << std::endl;
 }
 
 void bucketFillHelper(std::vector<std::vector<RGB>> image) {
-    std::cout << "Applying bucket fill (Threshold=" << bucketFillThreshold << ")..." << std::endl << std::endl;
+    std::cout << "Applying bucket fill using a single thread (Threshold=" << bucketFillThreshold << ")..." << std::endl << std::endl;
     auto start = std::chrono::high_resolution_clock::now();
     auto bucketFilledImage = applyBucketFillSingleThread(image, bucketFillThreshold);
     auto end = std::chrono::high_resolution_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "Time taken for applying bucket fill: " << elapsed.count() << " milliseconds." << std::endl << std::endl;
+    std::cout << "Time taken for applying bucket fill using a single thread: " << elapsed.count() << " milliseconds." << std::endl << std::endl;
     writeBmpSingleThread(BucketFillOutputFilename, bucketFilledImage, false);
     std::cout << "Saved bucket-filled image to \"" << BucketFillOutputFilename << "\"" << std::endl << std::endl;
+
+    // std::cout << "Applying bucket fill using multiple threads (Threshold=" << bucketFillThreshold << ")..." << std::endl << std::endl;
+    // start = std::chrono::high_resolution_clock::now();
+    // bucketFilledImage = applyBucketFillMultipleThreads(image, bucketFillThreshold);
+    // end = std::chrono::high_resolution_clock::now();
+    // elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    // std::cout << "Time taken for applying bucket fill using multiple threads: " << elapsed.count() << " milliseconds." << std::endl << std::endl;
+    // writeBmpSingleThread(BucketFillOutputFilename, bucketFilledImage, false);
+    // std::cout << "Saved bucket-filled image to \"" << BucketFillOutputFilename << "\"" << std::endl << std::endl;
 }
 
 void bilinearResizeHelper(std::vector<std::vector<RGB>> image) {
-    std::cout << "Applying bilinear resizing (Output Size=" << resizeWidthBilinear << "x" << resizeHeightBilinear << ")..." << std::endl << std::endl;
+    std::cout << "Applying bilinear resizing using a single thread (Output Size=" << resizeWidthBilinear << "x" << resizeHeightBilinear << ")..." << std::endl << std::endl;
     auto start = std::chrono::high_resolution_clock::now();
     auto bilinearResizedImage = resizeBilinearSingleThread(image, resizeWidthBilinear, resizeHeightBilinear);
     auto end = std::chrono::high_resolution_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "Time taken for applying bilinear resizing: " << elapsed.count() << " milliseconds." << std::endl << std::endl;
+    std::cout << "Time taken for applying bilinear resizing using a single thread: " << elapsed.count() << " milliseconds." << std::endl << std::endl;
     writeBmpSingleThread(BilinearResizedOutputFilename, bilinearResizedImage, true, resizeWidthBilinear, resizeHeightBilinear);
     std::cout << "Saved bilinear-resized image to \"" << BilinearResizedOutputFilename << "\"" << std::endl << std::endl;
+
+    // std::cout << "Applying bilinear resizing using multiple threads (Output Size=" << resizeWidthBilinear << "x" << resizeHeightBilinear << ")..." << std::endl << std::endl;
+    // start = std::chrono::high_resolution_clock::now();
+    // bilinearResizedImage = resizeBilinearMultipleThreads(image, resizeWidthBilinear, resizeHeightBilinear);
+    // end = std::chrono::high_resolution_clock::now();
+    // elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    // std::cout << "Time taken for applying bilinear resizing using multiple threads: " << elapsed.count() << " milliseconds." << std::endl << std::endl;
+    // writeBmpSingleThread(BilinearResizedOutputFilename, bilinearResizedImage, true, resizeWidthBilinear, resizeHeightBilinear);
+    // std::cout << "Saved bilinear-resized image to \"" << BilinearResizedOutputFilename << "\"" << std::endl << std::endl;
 }
 
 void bicubicResizeHelper(std::vector<std::vector<RGB>> image) {
-    std::cout << "Applying bicubic resizing (Output Size=" << resizeWidthBicubic << "x" << resizeHeightBicubic << ")..." << std::endl << std::endl;
+    std::cout << "Applying bicubic resizing using a single thread (Output Size=" << resizeWidthBicubic << "x" << resizeHeightBicubic << ")..." << std::endl << std::endl;
     auto start = std::chrono::high_resolution_clock::now();
     auto bicubicResizedImage = resizeBicubicSingleThread(image, resizeWidthBicubic, resizeHeightBicubic);
     auto end = std::chrono::high_resolution_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "Time taken for applying bicubic resizing: " << elapsed.count() << " milliseconds." << std::endl << std::endl;
+    std::cout << "Time taken for applying bicubic resizing using a single thread: " << elapsed.count() << " milliseconds." << std::endl << std::endl;
     writeBmpSingleThread(BicubicResizedOutputFilename, bicubicResizedImage, true, resizeWidthBicubic, resizeHeightBicubic);
     std::cout << "Saved bicubic-resized image to \"" << BicubicResizedOutputFilename << "\"" << std::endl << std::endl;
+
+    // std::cout << "Applying bicubic resizing using multiple threads (Output Size=" << resizeWidthBicubic << "x" << resizeHeightBicubic << ")..." << std::endl << std::endl;
+    // start = std::chrono::high_resolution_clock::now();
+    // bicubicResizedImage = resizeBicubicMultipleThreads(image, resizeWidthBicubic, resizeHeightBicubic);
+    // end = std::chrono::high_resolution_clock::now();
+    // elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    // std::cout << "Time taken for applying bicubic resizing using multiple threads: " << elapsed.count() << " milliseconds." << std::endl << std::endl;
+    // writeBmpSingleThread(BicubicResizedOutputFilename, bicubicResizedImage, true, resizeWidthBicubic, resizeHeightBicubic);
+    // std::cout << "Saved bicubic-resized image to \"" << BicubicResizedOutputFilename << "\"" << std::endl << std::endl;
 }
 
 void nearestNeighborResizeHelper(std::vector<std::vector<RGB>> image) {
-    std::cout << "Applying nearest neighbor resizing (Output Size=" << resizeWidthNearestNeighbor << "x" << resizeHeightNearestNeighbor << ")..." << std::endl << std::endl;
+    std::cout << "Applying nearest neighbor resizing using a single thread (Output Size=" << resizeWidthNearestNeighbor << "x" << resizeHeightNearestNeighbor << ")..." << std::endl << std::endl;
     auto start = std::chrono::high_resolution_clock::now();
     auto nearestNeighborResizeSingleThreaddImage = nearestNeighborResizeSingleThread(image, resizeWidthNearestNeighbor, resizeHeightNearestNeighbor);
     auto end = std::chrono::high_resolution_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "Time taken for applying nearest neighbor resizing: " << elapsed.count() << " milliseconds." << std::endl << std::endl;
+    std::cout << "Time taken for applying nearest neighbor resizing using a single thread: " << elapsed.count() << " milliseconds." << std::endl << std::endl;
     writeBmpSingleThread(nearestNeighborResizedOutputFilename, nearestNeighborResizeSingleThreaddImage, true, resizeWidthNearestNeighbor, resizeHeightNearestNeighbor);
     std::cout << "Saved nearestNeighbor-resized image to \"" << nearestNeighborResizedOutputFilename << "\"" << std::endl << std::endl;
+
+    // std::cout << "Applying nearest neighbor resizing using multiple threads (Output Size=" << resizeWidthNearestNeighbor << "x" << resizeHeightNearestNeighbor << ")..." << std::endl << std::endl;
+    // start = std::chrono::high_resolution_clock::now();
+    // nearestNeighborResizeSingleThreaddImage = nearestNeighborResizeMultipleThreads(image, resizeWidthNearestNeighbor, resizeHeightNearestNeighbor);
+    // end = std::chrono::high_resolution_clock::now();
+    // elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    // std::cout << "Time taken for applying nearest neighbor resizing using multiple threads: " << elapsed.count() << " milliseconds." << std::endl << std::endl;
+    // writeBmpSingleThread(nearestNeighborResizedOutputFilename, nearestNeighborResizeSingleThreaddImage, true, resizeWidthNearestNeighbor, resizeHeightNearestNeighbor);
+    // std::cout << "Saved nearestNeighbor-resized image to \"" << nearestNeighborResizedOutputFilename << "\"" << std::endl << std::endl;
 }
 
 
@@ -825,7 +877,7 @@ std::vector<std::vector<double>> generateGaussianKernelMultipleThreads(double si
         sum += localSum; // Update global sum
     };
 
-    // Determine the number of threads to use based on hardware concurrency
+    // Determine the number of threads to use
     const unsigned int numThreads = std::thread::hardware_concurrency();
     std::vector<std::thread> threads; // Vector to store threads
     int rowsPerThread = kernelSize / numThreads; // Divide work evenly among threads
@@ -881,7 +933,7 @@ std::vector<std::vector<RGB>> applyGaussianBlurMultipleThreads(const std::vector
         }
     };
 
-    // Determine the number of threads to use based on hardware concurrency
+    // Determine the number of threads to use
     const unsigned int numThreads = std::thread::hardware_concurrency();
     std::vector<std::thread> threads; // Vector to store threads
     int rowsPerThread = height / numThreads; // Divide work evenly among threads
@@ -900,14 +952,140 @@ std::vector<std::vector<RGB>> applyGaussianBlurMultipleThreads(const std::vector
     return blurredImage; // Return the blurred image
 }
 
-// Apply box blur to the image with multiple threads
-std::vector<std::vector<RGB>> applyBoxBlurMultipleThreads(const std::vector<std::vector<RGB>>& image, int boxSize) {
+// Function to apply box blur to a specific strip of the image
+void applyBoxBlurToStrip(const std::vector<std::vector<RGB>>& image, std::vector<std::vector<RGB>>& blurredImage, int boxSize, int startY, int endY) {
+    // Determine the dimensions of the image
+    int height = image.size(), width = image[0].size();
+    // Calculate half the box size to define the blur area around each pixel
+    int halfBoxSize = boxSize / 2;
 
+    // Loop over each row in the assigned strip of the image
+    for (int y = startY; y < endY; ++y) {
+        // Loop over each column in the image
+        for (int x = 0; x < width; ++x) {
+            // Initialize accumulators and a counter for averaging
+            int count = 0;
+            double totalRed = 0, totalGreen = 0, totalBlue = 0;
+
+            // Loop over the box centered at the current pixel
+            for (int dy = -halfBoxSize; dy <= halfBoxSize; ++dy) {
+                for (int dx = -halfBoxSize; dx <= halfBoxSize; ++dx) {
+                    // Calculate the coordinates of the neighboring pixel
+                    int newY = y + dy, newX = x + dx;
+
+                    // Check if the neighboring pixel is within image bounds
+                    if (newX >= 0 && newX < width && newY >= 0 && newY < height) {
+                        // Access the neighboring pixel
+                        const auto& pixel = image[newY][newX];
+                        // Accumulate the color values
+                        totalRed += pixel.red;
+                        totalGreen += pixel.green;
+                        totalBlue += pixel.blue;
+                        // Increment the count of pixels considered
+                        ++count;
+                    }
+                }
+            }
+
+            // Compute the average color value and assign it to the blurred image
+            // Clamp the results to ensure they are within the valid color range
+            blurredImage[y][x].red = std::clamp(static_cast<int>(totalRed / count), 0, 255);
+            blurredImage[y][x].green = std::clamp(static_cast<int>(totalGreen / count), 0, 255);
+            blurredImage[y][x].blue = std::clamp(static_cast<int>(totalBlue / count), 0, 255);
+        }
+    }
+}
+
+// Apply box blur to the image using multiple threads
+std::vector<std::vector<RGB>> applyBoxBlurMultipleThreads(const std::vector<std::vector<RGB>>& image, int boxSize) {
+    // Determine the number of threads to use
+    const unsigned int numThreads = std::thread::hardware_concurrency();
+    // Determine the dimensions of the image
+    int height = image.size();
+    int width = image[0].size();
+    // Prepare the output image with the same dimensions
+    std::vector<std::vector<RGB>> blurredImage(height, std::vector<RGB>(width));
+
+    // Container for the worker threads
+    std::vector<std::thread> workers;
+    // Calculate the height of each strip to be processed by a thread
+    int stripHeight = height / numThreads;
+
+    // Launch one thread per strip
+    for (int i = 0; i < numThreads; ++i) {
+        // Determine the start and end rows for the current thread
+        int startY = i * stripHeight;
+        int endY = (i + 1 == numThreads) ? height : (i + 1) * stripHeight; // Ensure the last thread covers the remainder
+
+        // Launch the thread to apply box blur to its assigned strip
+        workers.emplace_back(applyBoxBlurToStrip, std::cref(image), std::ref(blurredImage), boxSize, startY, endY);
+    }
+
+    // Wait for all threads to complete
+    for (auto& worker : workers) {
+        worker.join();
+    }
+
+    // Return the blurred image
+    return blurredImage;
+}
+
+// Apply motion blur to the image based on a given motion length with multiple threads
+void applyMotionBlurSegment(const std::vector<std::vector<RGB>>& image, std::vector<std::vector<RGB>>& blurredImage, int startY, int endY, int motionLength) {
+    int width = image[0].size(); // The width of the image
+    int halfLength = motionLength / 2; // Half the motion length to average pixels around the target pixel
+
+    // Loop through each pixel in the segment
+    for (int y = startY; y < endY; ++y) {
+        for (int x = 0; x < width; ++x) {
+            double totalRed = 0, totalGreen = 0, totalBlue = 0; // Accumulators for color values
+            int count = 0; // Number of pixels considered in the blur calculation
+
+            // Average pixels in the motion direction (horizontal)
+            for (int mx = -halfLength; mx <= halfLength; ++mx) {
+                int currentX = x + mx; // Calculate the x-coordinate of the pixel to consider
+                // Ensure the pixel is within image bounds
+                if (currentX >= 0 && currentX < width) {
+                    const RGB& pixel = image[y][currentX]; // Get the pixel
+                    // Accumulate the color values
+                    totalRed += pixel.red;
+                    totalGreen += pixel.green;
+                    totalBlue += pixel.blue;
+                    count++; // Increment the count
+                }
+            }
+
+            // Calculate and set the average color value for the target pixel
+            blurredImage[y][x].red = std::clamp(static_cast<int>(totalRed / count), 0, 255);
+            blurredImage[y][x].green = std::clamp(static_cast<int>(totalGreen / count), 0, 255);
+            blurredImage[y][x].blue = std::clamp(static_cast<int>(totalBlue / count), 0, 255);
+        }
+    }
 }
 
 // Apply motion blur to the image based on a given motion length with multiple threads
 std::vector<std::vector<RGB>> applyMotionBlurMultipleThreads(const std::vector<std::vector<RGB>>& image, int motionLength) {
+    // Determine the optimal number of threads based on hardware
+    const unsigned int numThreads = std::thread::hardware_concurrency();
+    int height = image.size(), width = image[0].size(); // Dimensions of the input image
+    std::vector<std::vector<RGB>> blurredImage(height, std::vector<RGB>(width)); // Prepare the output image
 
+    std::vector<std::thread> threads; // Container for threads
+    int segmentHeight = height / numThreads; // Calculate the height of each segment
+
+    // Create and start threads, each processing a segment of the image
+    for (unsigned int i = 0; i < numThreads; ++i) {
+        int startY = i * segmentHeight; // Start Y-coordinate for this thread
+        int endY = (i == numThreads - 1) ? height : (i + 1) * segmentHeight; // End Y-coordinate for this thread
+        threads.emplace_back(applyMotionBlurSegment, std::cref(image), std::ref(blurredImage), startY, endY, motionLength);
+    }
+
+    // Wait for all threads to complete
+    for (auto& t : threads) {
+        t.join();
+    }
+
+    return blurredImage; // Return the processed image
 }
 
 // Function to calculate Euclidean distance between two colors in RGB space with multiple threads
