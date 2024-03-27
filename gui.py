@@ -53,14 +53,23 @@ class ImageProcessorApp:
 
     def run_command(self, arg):
         self.root.update_idletasks()
-        command = f"make run sigma={self.sigma.get()} boxSize={self.boxSize.get()} motionLength={self.motionLength.get()} bucketFillThreshold={self.bucketFillThreshold.get()} bucketFillX={self.bucketFillX.get()} bucketFillY={self.bucketFillY.get()} resizeWidthBilinear={self.resizeWidthBilinear.get()} resizeHeightBilinear={self.resizeHeightBilinear.get()} resizeWidthBicubic={self.resizeWidthBicubic.get()} resizeHeightBicubic={self.resizeHeightBicubic.get()} resizeWidthNearestNeighbor={self.resizeWidthNearestNeighbor.get()} resizeHeightNearestNeighbor={self.resizeHeightNearestNeighbor.get()} input_image_size={self.input_image_size.get()} function={arg}"
+
+        self.console.delete("1.0", tk.END)
+        self.console.insert(tk.END, "Executing...\n")
+        self.console.see(tk.END)
+
+        self.root.update_idletasks()
+
+        command = f"make run sigma={self.sigma.get()} boxSize={self.boxSize.get()} motionLength={self.motionLength.get()} bucketFillThreshold={self.bucketFillThreshold.get()} bucketFillX={self.bucketFillX.get()} bucketFillY={self.bucketFillY.get()} resizeWidthBilinear={self.resizeWidthBilinear.get()} resizeHeightBilinear={self.resizeHeightBilinear.get()} resizeWidthBicubic={self.resizeWidthBicubic.get()} resizeHeightBicubic={self.resizeHeightBicubic.get()} resizeWidthNearestNeighbor={self.resizeWidthNearestNeighbor.get()} resizeHeightNearestNeighbor={self.resizeHeightNearestNeighbor.get()} inputImageSize={self.inputImageSize.get()} function={arg}"
+        print(f"make run sigma={self.sigma.get()} boxSize={self.boxSize.get()} motionLength={self.motionLength.get()} bucketFillThreshold={self.bucketFillThreshold.get()} bucketFillX={self.bucketFillX.get()} bucketFillY={self.bucketFillY.get()} resizeWidthBilinear={self.resizeWidthBilinear.get()} resizeHeightBilinear={self.resizeHeightBilinear.get()} resizeWidthBicubic={self.resizeWidthBicubic.get()} resizeHeightBicubic={self.resizeHeightBicubic.get()} resizeWidthNearestNeighbor={self.resizeWidthNearestNeighbor.get()} resizeHeightNearestNeighbor={self.resizeHeightNearestNeighbor.get()} inputImageSize={self.inputImageSize.get()} function={arg}")
+        self.console.delete("1.0", tk.END)
         process = Popen(command, shell=True, stdout=PIPE, stderr=STDOUT, text=True)
         display_output = False 
         while True:
             output = process.stdout.readline()
             if output == '' and process.poll() is not None:
                 break
-            if "Parsing input image..." in output: 
+            if "Parsing input image using a single thread..." in output: 
                 display_output = True
             if display_output:
                 self.console.insert(tk.END, output)
@@ -77,10 +86,10 @@ class ImageProcessorApp:
         rb_container = tk.Frame(size_label_frame, bg='#e6e6e6')
         rb_container.pack(side='left', padx=5, pady=1) 
 
-        self.input_image_size = tk.StringVar(value='small') 
+        self.inputImageSize = tk.StringVar(value='small') 
         sizes = {"Small": "small", "Medium": "medium", "Large": "large"}
         for text, size in sizes.items():
-            rb = tk.Radiobutton(rb_container, text=text, variable=self.input_image_size, value=size, bg='#e6e6e6')
+            rb = tk.Radiobutton(rb_container, text=text, variable=self.inputImageSize, value=size, bg='#e6e6e6')
             rb.pack(side='left', padx=1, pady=1)
 
     def set_window_position(self, width, height):
@@ -95,7 +104,7 @@ class ImageProcessorApp:
         input_image_png_path = self.bmp_to_png(self.input_image_path)
         input_photo = tk.PhotoImage(file=input_image_png_path)
         self.input_label = self.setup_image_frame(self.images_frame, input_photo, "Original")
-        self.output_label = self.setup_image_frame(self.images_frame, input_photo, "Modified (Resized to Match Original)")
+        self.output_label = self.setup_image_frame(self.images_frame, input_photo, "Modified (Fixed to Original Aspect Ratio)")
 
     def setup_image_frame(self, parent_frame, photo, text):
         label_frame = tk.Frame(parent_frame, bg='#f0f0f0')

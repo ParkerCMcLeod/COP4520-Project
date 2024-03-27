@@ -254,7 +254,7 @@ std::vector<std::vector<RGB>> parseImageHelper() {
     auto elapsedSingle = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     std::cout << "Time taken for parsing input image using a single thread (" << (image[0].size() * image.size()) << "px): " << elapsedSingle.count() << " milliseconds." << std::endl;
 
-    std::cout << "Parsing input image using multiple threads..." << std::endl;
+    std::cout << "Parsing input image using a single thread..." << std::endl;
     start = std::chrono::high_resolution_clock::now();
     image = readBmpMultipleThreads(InputFilename);
     end = std::chrono::high_resolution_clock::now();
