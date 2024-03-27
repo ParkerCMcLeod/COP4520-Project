@@ -12,6 +12,8 @@
 #include <vector>
 #include <atomic>
 #include <thread>
+#include <mutex>
+#include <cstring>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -212,25 +214,25 @@ void createOutFolder() {
     struct stat st;
     if (stat(dir, &st) != 0) {
         if (mkdir(dir, 0755) == 0) {
-            std::cout << "Directory created successfully.\n";
+            std::cout << "Directory created successfully.\n" << std::endl;
         } else {
             perror("Failed to create directory");
         }
     } else {
-        std::cout << "Directory already exists.\n";
+        std::cout << "Directory already exists.\n" << std::endl;
     }
 #endif
 }
 
 std::vector<std::vector<RGB>> parseImageHelper() {
-    std::cout << std::endl << "Parsing input image..." << std::endl << std::endl;
+    std::cout << "Parsing input image..." << std::endl << std::endl;
     auto start = std::chrono::high_resolution_clock::now();
     auto image = readBmpSingleThread(InputFilename);
     auto end = std::chrono::high_resolution_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     std::cout << "Time taken for parsing input image single thread (" << (image[0].size() * image.size()) << "px): " << elapsed.count() << " milliseconds." << std::endl << std::endl;
 
-    std::cout << std::endl << "Parsing input image..." << std::endl << std::endl;
+    std::cout << "Parsing input image..." << std::endl << std::endl;
     start = std::chrono::high_resolution_clock::now();
     image = readBmpMultipleThreads(InputFilename);
     end = std::chrono::high_resolution_clock::now();
@@ -718,36 +720,37 @@ void writeBmpSingleThread(const std::string& filename, const std::vector<std::ve
 
 struct ThreadData {
     int startRow, endRow;
-    std::string filename;
+    const std::string* filename;
     std::vector<std::vector<RGB>>* image;
     int width, rowPadding;
+    int headerOffset = 54;
 };
 
-void* readRows(void* arg) {
-    ThreadData* data = reinterpret_cast<ThreadData*>(arg);
-    std::ifstream bmpFile(data->filename, std::ios::binary);
+// Thread function to read rows. 
+void readRows(const ThreadData* data) {
+    std::ifstream bmpFile(*data->filename, std::ios::binary);
     if (!bmpFile) {
-        std::cerr << "Could not open BMP file!" << std::endl;
-        return nullptr;
+        std::cerr << "Could not open BMP file!\n";
+        return; // Simply return without nullptr since the function now returns void.
     }
     
-    // Each thread seeks to its starting position before reading
+    // Calculate the byte size of a row including padding
     int dataSize = data->width * sizeof(RGB) + data->rowPadding;
-    for (int y = data->startRow; y < data->endRow; y++) {
-        bmpFile.seekg(54 + y * dataSize, bmpFile.beg);
-        bmpFile.read(reinterpret_cast<char*>((*data->image)[y].data()), data->width * sizeof(RGB));
-        bmpFile.ignore(data->rowPadding); // Ignore padding
+    std::vector<char> buffer(dataSize - data->rowPadding); // Buffer to read pixel data into, excluding padding
+
+    for (int y = data->startRow; y < data->endRow; ++y) {
+        bmpFile.seekg(data->headerOffset + y * dataSize, std::ios::beg);
+        bmpFile.read(buffer.data(), buffer.size());
+        std::memcpy((*data->image)[y].data(), buffer.data(), buffer.size());
     }
-    
-    return nullptr;
 }
 
-// Read bitmap images with many threads
+// Function to read BMP images utilizing multiple threads
 std::vector<std::vector<RGB>> readBmpMultipleThreads(const std::string& filename) {
-    // read header for width,size
+    // Open the BMP file to read width and height
     std::ifstream bmpFile(filename, std::ios::binary);
     if (!bmpFile) {
-        std::cerr << "Could not open BMP file!" << std::endl;
+        std::cerr << "Could not open BMP file!\n";
         return {};
     }
 
@@ -757,30 +760,30 @@ std::vector<std::vector<RGB>> readBmpMultipleThreads(const std::string& filename
     bmpFile.read(reinterpret_cast<char*>(&height), sizeof(height));
     int rowPadding = (4 - (width * 3) % 4) % 4;
 
-    // create rgb vector
+    // Initialize the image storage
     std::vector<std::vector<RGB>> image(height, std::vector<RGB>(width));
 
     // Determine the number of threads to use
     unsigned numThreads = std::thread::hardware_concurrency();
-    std::vector<pthread_t> threads(numThreads);
+    std::vector<std::thread> threads;
     std::vector<ThreadData> threadData(numThreads);
 
-    // start thread queue
-    // each thread reads a row and writes to rgb vector
+    // Distribute rows among threads
     int rowsPerThread = height / numThreads;
     for (unsigned i = 0; i < numThreads; ++i) {
-        threadData[i].startRow = i * rowsPerThread;
-        threadData[i].endRow = (i == numThreads - 1) ? height : (i + 1) * rowsPerThread;
-        threadData[i].filename = filename;
-        threadData[i].image = &image;
-        threadData[i].width = width;
-        threadData[i].rowPadding = rowPadding;
-
-        pthread_create(&threads[i], nullptr, readRows, &threadData[i]);
+        threadData[i] = {i * rowsPerThread,
+                         (i == numThreads - 1) ? height : (i + 1) * rowsPerThread,
+                         &filename, // Pass address of filename
+                         &image,
+                         width,
+                         rowPadding};
+                         
+        threads.emplace_back(readRows, &threadData[i]);
     }
 
-    for (unsigned i = 0; i < numThreads; ++i) {
-        pthread_join(threads[i], nullptr);
+    // Wait for all threads to finish
+    for (auto& t : threads) {
+        t.join();
     }
 
     return image;
