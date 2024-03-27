@@ -15,6 +15,7 @@
 #include <mutex>
 #include <cstring>
 
+
 #ifdef _WIN32
 #include <windows.h>
 #else
@@ -104,31 +105,31 @@ std::vector<std::vector<RGB>> nearestNeighborResizeSingleThread(const std::vecto
 // Save the new image data by copying the original file and replacing the header (for resize) and pixel color data  with one thread
 void writeBmpSingleThread(const std::string& filename, const std::vector<std::vector<RGB>>& image, bool resize, int resizedWidth=-1, int resizedHeight=-1);
 
-// Read bitmap images with many threads
+// Read bitmap images with multiple threads
 std::vector<std::vector<RGB>> readBmpMultipleThreads(const std::string& filename);
-// Generate the Gaussian kernel with many threads
+// Generate the Gaussian kernel with multiple threads
 std::vector<std::vector<double>> generateGaussianKernelMultipleThreads(double sigma);
-// Apply Gaussian blur to an image with many threads
+// Apply Gaussian blur to an image with multiple threads
 std::vector<std::vector<RGB>> applyGaussianBlurMultipleThreads(const std::vector<std::vector<RGB>>& image, const std::vector<std::vector<double>>& kernel);
-// Apply box blur to the image with many threads
+// Apply box blur to the image with multiple threads
 std::vector<std::vector<RGB>> applyBoxBlurMultipleThreads(const std::vector<std::vector<RGB>>& image, int boxSize);
-// Apply motion blur to the image based on a given motion length with many threads
+// Apply motion blur to the image based on a given motion length with multiple threads
 std::vector<std::vector<RGB>> applyMotionBlurMultipleThreads(const std::vector<std::vector<RGB>>& image, int motionLength);
-// Function to calculate Euclidean distance between two colors in RGB space with many threads
+// Function to calculate Euclidean distance between two colors in RGB space with multiple threads
 double colorDistanceMultipleThreads(const RGB& color1, const RGB& color2);
-// Apply bucket fill to the other image with many threads
+// Apply bucket fill to the other image with multiple threads
 std::vector<std::vector<RGB>> applyBucketFillMultipleThreads(const std::vector<std::vector<RGB>>& image, int threshold);
-// Bicubic interpolation kernel based on Catmull-Rom spline with many threads
+// Bicubic interpolation kernel based on Catmull-Rom spline with multiple threads
 double cubicInterpolateMultipleThreads(double p[4], double x);
-// Function to perform bicubic interpolation on a 4x4 patch of an image with many threads
+// Function to perform bicubic interpolation on a 4x4 patch of an image with multiple threads
 double bicubicInterpolateMultipleThreads(double arr[4][4], double x, double y);
-// Function to resize an image using bicubic interpolation with many threads
+// Function to resize an image using bicubic interpolation with multiple threads
 std::vector<std::vector<RGB>> resizeBicubicMultipleThreads(const std::vector<std::vector<RGB>>& image, int newWidth, int newHeight);
-// Function to resize an image using bilinear interpolation with many threads
+// Function to resize an image using bilinear interpolation with multiple threads
 std::vector<std::vector<RGB>> resizeBilinearMultipleThreads(const std::vector<std::vector<RGB>>& image, int newWidth, int newHeight);
-// Apply nearest neighbor resizing to the image  with many threads
+// Apply nearest neighbor resizing to the image  with multiple threads
 std::vector<std::vector<RGB>> nearestNeighborResizeMultipleThreads(const std::vector<std::vector<RGB>>& image, int newWidth, int newHeight);
-// Save the new image data by copying the original file and replacing the header (for resize) and pixel color data  with many threads
+// Save the new image data by copying the original file and replacing the header (for resize) and pixel color data  with multiple threads
 void writeBmpMultipleThreads(const std::string& filename, const std::vector<std::vector<RGB>>& image, bool resize, int resizedWidth=-1, int resizedHeight=-1);
 
 
@@ -225,31 +226,41 @@ void createOutFolder() {
 }
 
 std::vector<std::vector<RGB>> parseImageHelper() {
-    std::cout << "Parsing input image..." << std::endl << std::endl;
+    std::cout << "Parsing input image using a single thread..." << std::endl << std::endl;
     auto start = std::chrono::high_resolution_clock::now();
     auto image = readBmpSingleThread(InputFilename);
     auto end = std::chrono::high_resolution_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "Time taken for parsing input image single thread (" << (image[0].size() * image.size()) << "px): " << elapsed.count() << " milliseconds." << std::endl << std::endl;
+    std::cout << "Time taken for parsing input image using a single thread (" << (image[0].size() * image.size()) << "px): " << elapsed.count() << " milliseconds." << std::endl << std::endl;
 
-    std::cout << "Parsing input image..." << std::endl << std::endl;
+    std::cout << "Parsing input image using multiple threads..." << std::endl << std::endl;
     start = std::chrono::high_resolution_clock::now();
     image = readBmpMultipleThreads(InputFilename);
     end = std::chrono::high_resolution_clock::now();
     elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "Time taken for parsing input image multiple threads (" << (image[0].size() * image.size()) << "px): " << elapsed.count() << " milliseconds." << std::endl << std::endl;
+    std::cout << "Time taken for parsing input image using multiple threads (" << (image[0].size() * image.size()) << "px): " << elapsed.count() << " milliseconds." << std::endl << std::endl;
 
     return image;
 }
 
 void gaussianBlurHelper(std::vector<std::vector<RGB>> image) {
-    std::cout << "Applying Gaussian blur (sigma=" << sigma << ")..." << std::endl << std::endl;
+    std::cout << "Applying Gaussian blur using a single thread (sigma=" << sigma << ")..." << std::endl << std::endl;
     auto start = std::chrono::high_resolution_clock::now();
     auto kernel = generateGaussianKernelSingleThread(sigma);
     auto blurredImage = applyGaussianBlurSingleThread(image, kernel);
     auto end = std::chrono::high_resolution_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "Time taken for applying Gaussian blur: " << elapsed.count() << " milliseconds." << std::endl << std::endl;
+    std::cout << "Time taken for applying Gaussian blur using a single thread: " << elapsed.count() << " milliseconds." << std::endl << std::endl;
+    writeBmpSingleThread(GaussianBlurredOutputFilename, blurredImage, false);
+    std::cout << "Saved gaussian blurred image to \"" << GaussianBlurredOutputFilename << "\"" << std::endl << std::endl;
+
+    std::cout << "Applying Gaussian blur using multiple threads (sigma=" << sigma << ")..." << std::endl << std::endl;
+    start = std::chrono::high_resolution_clock::now();
+    kernel = generateGaussianKernelMultipleThreads(sigma);
+    blurredImage = applyGaussianBlurMultipleThreads(image, kernel);
+    end = std::chrono::high_resolution_clock::now();
+    elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Time taken for applying Gaussian blur using multiple threads: " << elapsed.count() << " milliseconds." << std::endl << std::endl;
     writeBmpSingleThread(GaussianBlurredOutputFilename, blurredImage, false);
     std::cout << "Saved gaussian blurred image to \"" << GaussianBlurredOutputFilename << "\"" << std::endl << std::endl;
 }
@@ -770,7 +781,7 @@ std::vector<std::vector<RGB>> readBmpMultipleThreads(const std::string& filename
 
     // Distribute rows among threads
     int rowsPerThread = height / numThreads;
-    for (unsigned i = 0; i < numThreads; ++i) {
+    for (int i = 0; i < numThreads; ++i) {
         threadData[i] = {i * rowsPerThread,
                          (i == numThreads - 1) ? height : (i + 1) * rowsPerThread,
                          &filename, // Pass address of filename
@@ -789,62 +800,152 @@ std::vector<std::vector<RGB>> readBmpMultipleThreads(const std::string& filename
     return image;
 }
 
-// Generate the Gaussian kernel with many threads
+// Generate the Gaussian kernel with multiple threads
 std::vector<std::vector<double>> generateGaussianKernelMultipleThreads(double sigma) {
+    // Calculate the kernel size to ensure it's odd
+    int kernelSize = static_cast<int>(std::round(6 * sigma)) | 1;
+    // Initialize the kernel matrix with the calculated size
+    std::vector<std::vector<double>> kernel(kernelSize, std::vector<double>(kernelSize));
+    double sum = 0.0; // Sum of all elements for normalization
+    int halfSize = kernelSize / 2; // Half the kernel size for indexing
+    std::mutex sumMutex; // Mutex for thread-safe sum updates
+    
+    // Worker lambda function for parallel computation of kernel values
+    auto worker = [&](int startX, int endX) {
+        double localSum = 0.0; // Local sum for elements computed by this thread
+        for (int x = startX; x <= endX; x++) {
+            for (int y = -halfSize; y <= halfSize; y++) {
+                double exponent = -(x * x + y * y) / (2 * sigma * sigma);
+                double value = std::exp(exponent) / (2 * PI * sigma * sigma);
+                kernel[x + halfSize][y + halfSize] = value;
+                localSum += value; // Update local sum
+            }
+        }
+        std::lock_guard<std::mutex> lock(sumMutex); // Lock guard for thread-safe update of global sum
+        sum += localSum; // Update global sum
+    };
 
+    // Determine the number of threads to use based on hardware concurrency
+    const unsigned int numThreads = std::thread::hardware_concurrency();
+    std::vector<std::thread> threads; // Vector to store threads
+    int rowsPerThread = kernelSize / numThreads; // Divide work evenly among threads
+    for (unsigned int i = 0; i < numThreads; ++i) {
+        int start = -halfSize + i * rowsPerThread; // Calculate start index for this thread
+        int end = i == numThreads - 1 ? halfSize : -halfSize + (i + 1) * rowsPerThread - 1; // Calculate end index for this thread
+        threads.emplace_back(worker, start, end); // Create and start a new thread
+    }
+
+    for (auto& t : threads) {
+        t.join(); // Wait for all threads to finish
+    }
+
+    // Normalize the kernel by dividing each element by the sum of all elements
+    for (auto& row : kernel) {
+        for (double& value : row) {
+            value /= sum;
+        }
+    }
+
+    return kernel; // Return the generated and normalized kernel
 }
 
-// Apply Gaussian blur to an image with many threads
+// Apply Gaussian blur to an image with multiple threads
 std::vector<std::vector<RGB>> applyGaussianBlurMultipleThreads(const std::vector<std::vector<RGB>>& image, const std::vector<std::vector<double>>& kernel) {
+    int height = image.size(), width = image[0].size(), kernelSize = kernel.size(); // Image and kernel dimensions
+    std::vector<std::vector<RGB>> blurredImage(height, std::vector<RGB>(width)); // Initialize the blurred image matrix
 
+    // Worker lambda function for applying Gaussian blur in parallel
+    auto worker = [&](int startRow, int endRow) {
+        for (int y = startRow; y <= endRow; ++y) {
+            for (int x = 0; x < width; ++x) {
+                double totalRed = 0, totalGreen = 0, totalBlue = 0; // Accumulators for color channels
+                for (int ky = -kernelSize / 2; ky <= kernelSize / 2; ++ky) {
+                    for (int kx = -kernelSize / 2; kx <= kernelSize / 2; ++kx) {
+                        int pixelPosX = x + kx, pixelPosY = y + ky; // Calculate the position of the neighboring pixel
+                        // Ensure the neighboring pixel is within image bounds
+                        if (pixelPosX >= 0 && pixelPosX < width && pixelPosY >= 0 && pixelPosY < height) {
+                            const auto& pixel = image[pixelPosY][pixelPosX]; // Get the neighboring pixel
+                            double kernelValue = kernel[ky + kernelSize / 2][kx + kernelSize / 2]; // Get the kernel value for this position
+                            // Multiply the kernel value with pixel's color channels and accumulate
+                            totalRed += pixel.red * kernelValue;
+                            totalGreen += pixel.green * kernelValue;
+                            totalBlue += pixel.blue * kernelValue;
+                        }
+                    }
+                }
+                // Clamp the accumulated color values to the valid range [0, 255] and assign to the blurred image
+                blurredImage[y][x].red = std::clamp(static_cast<int>(totalRed), 0, 255);
+                blurredImage[y][x].green = std::clamp(static_cast<int>(totalGreen), 0, 255);
+                blurredImage[y][x].blue = std::clamp(static_cast<int>(totalBlue), 0, 255);
+            }
+        }
+    };
+
+    // Determine the number of threads to use based on hardware concurrency
+    const unsigned int numThreads = std::thread::hardware_concurrency();
+    std::vector<std::thread> threads; // Vector to store threads
+    int rowsPerThread = height / numThreads; // Divide work evenly among threads
+    for (unsigned int i = 0; i < numThreads; ++i) {
+        // Calculate the start and end row for each thread
+        int startRow = i * rowsPerThread;
+        int endRow = i == numThreads - 1 ? height - 1 : (i + 1) * rowsPerThread - 1;
+        threads.emplace_back(worker, startRow, endRow); // Create and start a new thread
+    }
+
+    // Wait for all threads to complete their work
+    for (auto& t : threads) {
+        t.join();
+    }
+
+    return blurredImage; // Return the blurred image
 }
 
-// Apply box blur to the image with many threads
+// Apply box blur to the image with multiple threads
 std::vector<std::vector<RGB>> applyBoxBlurMultipleThreads(const std::vector<std::vector<RGB>>& image, int boxSize) {
 
 }
 
-// Apply motion blur to the image based on a given motion length with many threads
+// Apply motion blur to the image based on a given motion length with multiple threads
 std::vector<std::vector<RGB>> applyMotionBlurMultipleThreads(const std::vector<std::vector<RGB>>& image, int motionLength) {
 
 }
 
-// Function to calculate Euclidean distance between two colors in RGB space with many threads
+// Function to calculate Euclidean distance between two colors in RGB space with multiple threads
 double colorDistanceMultipleThreads(const RGB& color1, const RGB& color2) {
 
 }
 
-// Apply bucket fill to the other image with many threads
+// Apply bucket fill to the other image with multiple threads
 std::vector<std::vector<RGB>> applyBucketFillMultipleThreads(const std::vector<std::vector<RGB>>& image, int threshold) {
 
 }
 
-// Bicubic interpolation kernel based on Catmull-Rom spline with many threads
+// Bicubic interpolation kernel based on Catmull-Rom spline with multiple threads
 double cubicInterpolateMultipleThreads(double p[4], double x) {
 
 }
 
-// Function to perform bicubic interpolation on a 4x4 patch of an image with many threads
+// Function to perform bicubic interpolation on a 4x4 patch of an image with multiple threads
 double bicubicInterpolateMultipleThreads(double arr[4][4], double x, double y) {
 
 }
 
-// Function to resize an image using bicubic interpolation with many threads
+// Function to resize an image using bicubic interpolation with multiple threads
 std::vector<std::vector<RGB>> resizeBicubicMultipleThreads(const std::vector<std::vector<RGB>>& image, int newWidth, int newHeight) {
 
 }
 
-// Function to resize an image using bilinear interpolation with many threads
+// Function to resize an image using bilinear interpolation with multiple threads
 std::vector<std::vector<RGB>> resizeBilinearMultipleThreads(const std::vector<std::vector<RGB>>& image, int newWidth, int newHeight) {
 
 }
 
-// Apply nearest neighbor resizing to the image  with many threads
+// Apply nearest neighbor resizing to the image  with multiple threads
 std::vector<std::vector<RGB>> nearestNeighborResizeMultipleThreads(const std::vector<std::vector<RGB>>& image, int newWidth, int newHeight) {
 
 }
 
-// Save the new image data by copying the original file and replacing the header (for resize) and pixel color data  with many threads
+// Save the new image data by copying the original file and replacing the header (for resize) and pixel color data  with multiple threads
 void writeBmpMultipleThreads(const std::string& filename, const std::vector<std::vector<RGB>>& image, bool resize, int resizedWidth, int resizedHeight) {
 
 }
