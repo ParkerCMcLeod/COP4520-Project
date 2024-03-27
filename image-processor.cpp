@@ -11,9 +11,14 @@
 #include <unordered_map>
 #include <vector>
 #include <atomic>
-#include <pthread.h>
+#include <thread>
+
+#ifdef _WIN32
+#include <windows.h>
+#else
 #include <sys/stat.h>
 #include <sys/types.h>
+#endif
 
 
 std::string InputFilename; // Input
@@ -223,7 +228,14 @@ std::vector<std::vector<RGB>> parseImageHelper() {
     auto image = readBmpSingleThread(InputFilename);
     auto end = std::chrono::high_resolution_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "Time taken for parsing input image (" << (image[0].size() * image.size()) << "px): " << elapsed.count() << " milliseconds." << std::endl << std::endl;
+    std::cout << "Time taken for parsing input image single thread (" << (image[0].size() * image.size()) << "px): " << elapsed.count() << " milliseconds." << std::endl << std::endl;
+
+    std::cout << std::endl << "Parsing input image..." << std::endl << std::endl;
+    start = std::chrono::high_resolution_clock::now();
+    image = readBmpMultipleThreads(InputFilename);
+    end = std::chrono::high_resolution_clock::now();
+    elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Time taken for parsing input image multiple threads (" << (image[0].size() * image.size()) << "px): " << elapsed.count() << " milliseconds." << std::endl << std::endl;
 
     return image;
 }
