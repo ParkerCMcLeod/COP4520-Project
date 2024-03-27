@@ -18,6 +18,7 @@
 #include <sys/types.h>
 #endif
 
+
 std::string InputFilename; // Input
 const std::string GaussianBlurredOutputFilename = "out/gaussianBlur.bmp"; // Output
 const std::string BoxBlurredOutputFilename = "out/boxBlur.bmp"; // Output
@@ -25,7 +26,7 @@ const std::string MotionBlurredOutputFilename = "out/motionBlur.bmp"; // Output
 const std::string BucketFillOutputFilename = "out/bucketFill.bmp"; // Output
 const std::string BilinearResizedOutputFilename = "out/bilinearResize.bmp"; // Output
 const std::string BicubicResizedOutputFilename = "out/bicubicResize.bmp"; // Output
-const std::string nearestNeighborResizeSingleThreaddOutputFilename = "out/nearestNeighborResizeSingleThread.bmp"; // Output
+const std::string nearestNeighborResizedOutputFilename = "out/nearestNeighborResize.bmp"; // Output
 
 double sigma = 3.0; // Gaussian blur sigma value (blur radius, significant performance impact)
 int boxSize = 9; // Box blur value (blur radius, must be odd)
@@ -40,20 +41,23 @@ int resizeHeightBicubic = 745; // Desired resize height
 int resizeWidthNearestNeighbor = 500; // Desired resize width
 int resizeHeightNearestNeighbor = 745; // Desired resize height
 std::string inputImageSize = "small"; // Which input image to use (small medium large)
-std::string function = "all"; // Which function to run (all gaussianBlur boxBlur motionBlur bucketFill bilinearResize bicubicResize nearestNeighborResizeSingleThread)
+std::string function = "all"; // Which function to run (all gaussianBlur boxBlur motionBlur bucketFill bilinearResize bicubicResize nearestNeighborResize)
 
 constexpr double PI = 3.14159265358979323846; // PI constant
+
 
 // RGB structure with the color order as blue, green, red to allow bottom up parsing present in .bmp
 struct RGB {
     uint8_t blue, green, red; 
 };
 
+
 // Create an out folder
 void createOutFolder();
 
 // Helper function for parsing image
 std::vector<std::vector<RGB>> parseImageHelper();
+
 // Helper function for timing and implementing the gaussian blur function
 void gaussianBlurHelper(std::vector<std::vector<RGB>> image);
 // Helper function for timing and implementing the box blur function
@@ -69,51 +73,60 @@ void bicubicResizeHelper(std::vector<std::vector<RGB>> image);
 // Helper function for timing and implementing the nearest neighbor resize function
 void nearestNeighborResizeHelper(std::vector<std::vector<RGB>> image);
 
-// Read and processes bitmap images using one thread
+// Read bitmap images with one thread
 std::vector<std::vector<RGB>> readBmpSingleThread(const std::string& filename);
-// Write and resize images using one thread
-void writeBmpResizeSingleThread(const std::string& filename, const std::vector<std::vector<RGB>>& image, int resizedWidth, int resizedHeight);
-// Generate the Gaussian kernel to support Gaussian blur using one thread
+// Generate the Gaussian kernel with one thread
 std::vector<std::vector<double>> generateGaussianKernelSingleThread(double sigma);
-// Apply Gaussian blur to the image using one thread
+// Apply Gaussian blur to an image with one thread
 std::vector<std::vector<RGB>> applyGaussianBlurSingleThread(const std::vector<std::vector<RGB>>& image, const std::vector<std::vector<double>>& kernel);
-// Save the new image data by copying the original file and replacing the pixel color data using one thread
-void writeBmpSingleThread(const std::string& filename, const std::vector<std::vector<RGB>>& image);
-// Apply box blur to the image using one thread
+// Apply box blur to the image with one thread
 std::vector<std::vector<RGB>> applyBoxBlurSingleThread(const std::vector<std::vector<RGB>>& image, int boxSize);
-// Apply motion blur to the image using one thread
+// Apply motion blur to the image based on a given motion length with one thread
 std::vector<std::vector<RGB>> applyMotionBlurSingleThread(const std::vector<std::vector<RGB>>& image, int motionLength);
-// Apply bucket fill to the other image using one thread
+// Function to calculate Euclidean distance between two colors in RGB space with one thread
+double colorDistanceSingleThread(const RGB& color1, const RGB& color2);
+// Apply bucket fill to the other image with one thread
 std::vector<std::vector<RGB>> applyBucketFillSingleThread(const std::vector<std::vector<RGB>>& image, int threshold);
-// Apply bilinear resizing to the image using one thread
-std::vector<std::vector<RGB>> resizeBilinearSingleThread(const std::vector<std::vector<RGB>>& image, int outputWidth, int outputHeight);
-// Apply bicubic resizing to the image using one thread
+// Bicubic interpolation kernel based on Catmull-Rom spline with one thread
+double cubicInterpolateSingleThread(double p[4], double x);
+// Function to perform bicubic interpolation on a 4x4 patch of an image with one thread
+double bicubicInterpolateSingleThread(double arr[4][4], double x, double y);
+// Function to resize an image using bicubic interpolation with one thread
 std::vector<std::vector<RGB>> resizeBicubicSingleThread(const std::vector<std::vector<RGB>>& image, int newWidth, int newHeight);
-// Apply nearest neighbor resizing to the image using one thread
+// Function to resize an image using bilinear interpolation with one thread
+std::vector<std::vector<RGB>> resizeBilinearSingleThread(const std::vector<std::vector<RGB>>& image, int newWidth, int newHeight);
+// Apply nearest neighbor resizing to the image  with one thread
 std::vector<std::vector<RGB>> nearestNeighborResizeSingleThread(const std::vector<std::vector<RGB>>& image, int newWidth, int newHeight);
+// Save the new image data by copying the original file and replacing the header (for resize) and pixel color data  with one thread
+void writeBmpSingleThread(const std::string& filename, const std::vector<std::vector<RGB>>& image, bool resize, int resizedWidth=-1, int resizedHeight=-1);
 
-// Read and processes bitmap images using multiple threads
-std::vector<std::vector<RGB>> readBmpMultipleThread(const std::string& filename);
-// Write and resize images using multiple threads
-void writeBmpResizeMultipleThread(const std::string& filename, const std::vector<std::vector<RGB>>& image, int resizedWidth, int resizedHeight);
-// Generate the Gaussian kernel to support Gaussian blur using multiple threads
-std::vector<std::vector<double>> generateGaussianKernelMultipleThread(double sigma);
-// Apply Gaussian blur to the image using multiple threads
-std::vector<std::vector<RGB>> applyGaussianBlurMultipleThread(const std::vector<std::vector<RGB>>& image, const std::vector<std::vector<double>>& kernel);
-// Save the new image data by copying the original file and replacing the pixel color data using multiple threads
-void writeBmpMultipleThread(const std::string& filename, const std::vector<std::vector<RGB>>& image);
-// Apply box blur to the image using multiple threads
-std::vector<std::vector<RGB>> applyBoxBlurMultipleThread(const std::vector<std::vector<RGB>>& image, int boxSize);
-// Apply motion blur to the image using multiple threads
-std::vector<std::vector<RGB>> applyMotionBlurMultipleThread(const std::vector<std::vector<RGB>>& image, int motionLength);
-// Apply bucket fill to the other image using multiple threads
-std::vector<std::vector<RGB>> applyBucketFillMultipleThread(const std::vector<std::vector<RGB>>& image, int threshold);
-// Apply bilinear resizing to the image using multiple threads
-std::vector<std::vector<RGB>> resizeBilinearMultipleThread(const std::vector<std::vector<RGB>>& image, int outputWidth, int outputHeight);
-// Apply bicubic resizing to the image using multiple threads
-std::vector<std::vector<RGB>> resizeBicubicMultipleThread(const std::vector<std::vector<RGB>>& image, int newWidth, int newHeight);
-// Apply nearest neighbor resizing to the image using multiple threads
-std::vector<std::vector<RGB>> nearestNeighborResizeMultipleThread(const std::vector<std::vector<RGB>>& image, int newWidth, int newHeight);
+// Read bitmap images with many threads
+std::vector<std::vector<RGB>> readBmpSingleThread(const std::string& filename);
+// Generate the Gaussian kernel with many threads
+std::vector<std::vector<double>> generateGaussianKernelSingleThread(double sigma);
+// Apply Gaussian blur to an image with many threads
+std::vector<std::vector<RGB>> applyGaussianBlurSingleThread(const std::vector<std::vector<RGB>>& image, const std::vector<std::vector<double>>& kernel);
+// Apply box blur to the image with many threads
+std::vector<std::vector<RGB>> applyBoxBlurSingleThread(const std::vector<std::vector<RGB>>& image, int boxSize);
+// Apply motion blur to the image based on a given motion length with many threads
+std::vector<std::vector<RGB>> applyMotionBlurSingleThread(const std::vector<std::vector<RGB>>& image, int motionLength);
+// Function to calculate Euclidean distance between two colors in RGB space with many threads
+double colorDistanceSingleThread(const RGB& color1, const RGB& color2);
+// Apply bucket fill to the other image with many threads
+std::vector<std::vector<RGB>> applyBucketFillSingleThread(const std::vector<std::vector<RGB>>& image, int threshold);
+// Bicubic interpolation kernel based on Catmull-Rom spline with many threads
+double cubicInterpolateSingleThread(double p[4], double x);
+// Function to perform bicubic interpolation on a 4x4 patch of an image with many threads
+double bicubicInterpolateSingleThread(double arr[4][4], double x, double y);
+// Function to resize an image using bicubic interpolation with many threads
+std::vector<std::vector<RGB>> resizeBicubicSingleThread(const std::vector<std::vector<RGB>>& image, int newWidth, int newHeight);
+// Function to resize an image using bilinear interpolation with many threads
+std::vector<std::vector<RGB>> resizeBilinearSingleThread(const std::vector<std::vector<RGB>>& image, int newWidth, int newHeight);
+// Apply nearest neighbor resizing to the image  with many threads
+std::vector<std::vector<RGB>> nearestNeighborResizeSingleThread(const std::vector<std::vector<RGB>>& image, int newWidth, int newHeight);
+// Save the new image data by copying the original file and replacing the header (for resize) and pixel color data  with many threads
+void writeBmpSingleThread(const std::string& filename, const std::vector<std::vector<RGB>>& image, bool resize, int resizedWidth=-1, int resizedHeight=-1);
+
 
 int main(int argc, char* argv[]) {
     if (argc < 15) {
@@ -159,7 +172,7 @@ int main(int argc, char* argv[]) {
         {"bucketFill", bucketFillHelper},
         {"bilinearResize", bilinearResizeHelper},
         {"bicubicResize", bicubicResizeHelper},
-        {"nearestNeighborResizeSingleThread", nearestNeighborResizeHelper}
+        {"nearestNeighborResize", nearestNeighborResizeHelper}
     };
 
     // Execute specified function if provided, else execute all
@@ -226,7 +239,7 @@ void gaussianBlurHelper(std::vector<std::vector<RGB>> image) {
     auto end = std::chrono::high_resolution_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     std::cout << "Time taken for applying Gaussian blur: " << elapsed.count() << " milliseconds." << std::endl << std::endl;
-    writeBmpSingleThread(GaussianBlurredOutputFilename, blurredImage);
+    writeBmpSingleThread(GaussianBlurredOutputFilename, blurredImage, false);
     std::cout << "Saved gaussian blurred image to \"" << GaussianBlurredOutputFilename << "\"" << std::endl << std::endl;
 }
 
@@ -237,7 +250,7 @@ void boxBlurHelper(std::vector<std::vector<RGB>> image) {
     auto end = std::chrono::high_resolution_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     std::cout << "Time taken for applying box blur: " << elapsed.count() << " milliseconds." << std::endl << std::endl;
-    writeBmpSingleThread(BoxBlurredOutputFilename, boxBlurredImage);
+    writeBmpSingleThread(BoxBlurredOutputFilename, boxBlurredImage, false);
     std::cout << "Saved box-blurred image to \"" << BoxBlurredOutputFilename << "\"" << std::endl << std::endl;
 }
 
@@ -248,7 +261,7 @@ void motionBlurHelper(std::vector<std::vector<RGB>> image) {
     auto end = std::chrono::high_resolution_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     std::cout << "Time taken for applying motion blur: " << elapsed.count() << " milliseconds." << std::endl << std::endl;
-    writeBmpSingleThread(MotionBlurredOutputFilename, motionBlurredImage);
+    writeBmpSingleThread(MotionBlurredOutputFilename, motionBlurredImage, false);
     std::cout << "Saved motion-blurred image to \"" << MotionBlurredOutputFilename << "\"" << std::endl << std::endl;
 }
 
@@ -259,7 +272,7 @@ void bucketFillHelper(std::vector<std::vector<RGB>> image) {
     auto end = std::chrono::high_resolution_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     std::cout << "Time taken for applying bucket fill: " << elapsed.count() << " milliseconds." << std::endl << std::endl;
-    writeBmpSingleThread(BucketFillOutputFilename, bucketFilledImage);
+    writeBmpSingleThread(BucketFillOutputFilename, bucketFilledImage, false);
     std::cout << "Saved bucket-filled image to \"" << BucketFillOutputFilename << "\"" << std::endl << std::endl;
 }
 
@@ -270,7 +283,7 @@ void bilinearResizeHelper(std::vector<std::vector<RGB>> image) {
     auto end = std::chrono::high_resolution_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     std::cout << "Time taken for applying bilinear resizing: " << elapsed.count() << " milliseconds." << std::endl << std::endl;
-    writeBmpResizeSingleThread(BilinearResizedOutputFilename, bilinearResizedImage, resizeWidthBilinear, resizeHeightBilinear);
+    writeBmpSingleThread(BilinearResizedOutputFilename, bilinearResizedImage, true, resizeWidthBilinear, resizeHeightBilinear);
     std::cout << "Saved bilinear-resized image to \"" << BilinearResizedOutputFilename << "\"" << std::endl << std::endl;
 }
 
@@ -281,7 +294,7 @@ void bicubicResizeHelper(std::vector<std::vector<RGB>> image) {
     auto end = std::chrono::high_resolution_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     std::cout << "Time taken for applying bicubic resizing: " << elapsed.count() << " milliseconds." << std::endl << std::endl;
-    writeBmpResizeSingleThread(BicubicResizedOutputFilename, bicubicResizedImage, resizeWidthBicubic, resizeHeightBicubic);
+    writeBmpSingleThread(BicubicResizedOutputFilename, bicubicResizedImage, true, resizeWidthBicubic, resizeHeightBicubic);
     std::cout << "Saved bicubic-resized image to \"" << BicubicResizedOutputFilename << "\"" << std::endl << std::endl;
 }
 
@@ -292,11 +305,12 @@ void nearestNeighborResizeHelper(std::vector<std::vector<RGB>> image) {
     auto end = std::chrono::high_resolution_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     std::cout << "Time taken for applying nearest neighbor resizing: " << elapsed.count() << " milliseconds." << std::endl << std::endl;
-    writeBmpResizeSingleThread(nearestNeighborResizeSingleThreaddOutputFilename, nearestNeighborResizeSingleThreaddImage, resizeWidthNearestNeighbor, resizeHeightNearestNeighbor);
-    std::cout << "Saved nearestNeighbor-resized image to \"" << nearestNeighborResizeSingleThreaddOutputFilename << "\"" << std::endl << std::endl;
+    writeBmpSingleThread(nearestNeighborResizedOutputFilename, nearestNeighborResizeSingleThreaddImage, true, resizeWidthNearestNeighbor, resizeHeightNearestNeighbor);
+    std::cout << "Saved nearestNeighbor-resized image to \"" << nearestNeighborResizedOutputFilename << "\"" << std::endl << std::endl;
 }
 
-// Read bitmap images
+
+// Read bitmap images with one thread
 std::vector<std::vector<RGB>> readBmpSingleThread(const std::string& filename) {
     std::ifstream bmpFile(filename, std::ios::binary); // Open the BMP file in binary mode
     std::vector<std::vector<RGB>> image; // Create a 2D vector to store the pixels
@@ -321,7 +335,7 @@ std::vector<std::vector<RGB>> readBmpSingleThread(const std::string& filename) {
     return image; // Return the read image
 }
 
-// Generate the Gaussian kernel
+// Generate the Gaussian kernel with one thread
 std::vector<std::vector<double>> generateGaussianKernelSingleThread(double sigma) {
     int kernelSize = static_cast<int>(std::round(6 * sigma)) | 1; // Calculate the kernel size (guarantee odd for central pixel)
     std::vector<std::vector<double>> kernel(kernelSize, std::vector<double>(kernelSize)); // Create a 2D vector for the kernel
@@ -346,7 +360,7 @@ std::vector<std::vector<double>> generateGaussianKernelSingleThread(double sigma
     return kernel; // Return the generated kernel
 }
 
-// Apply Gaussian blur to an image
+// Apply Gaussian blur to an image with one thread
 std::vector<std::vector<RGB>> applyGaussianBlurSingleThread(const std::vector<std::vector<RGB>>& image, const std::vector<std::vector<double>>& kernel) {
     int height = image.size(), width = image[0].size(), kernelSize = kernel.size(); // Get the dimensions of the image and the kernel
     std::vector<std::vector<RGB>> blurredImage(height, std::vector<RGB>(width)); // Create a 2D vector for the blurred image
@@ -376,82 +390,7 @@ std::vector<std::vector<RGB>> applyGaussianBlurSingleThread(const std::vector<st
     return blurredImage; // Return the blurred image
 }
 
-// Save the new image data by copying the original file and replacing the pixel color data
-void writeBmpSingleThread(const std::string& filename, const std::vector<std::vector<RGB>>& image) {
-    std::ifstream bmpFile(InputFilename, std::ios::binary); // Open the original BMP file in binary mode to read the header
-    std::ofstream outFile(filename, std::ios::binary); // Open the output file in binary mode
-
-    if (!bmpFile || !outFile) {
-        std::cerr << "Could not open BMP files for reading/writing." << std::endl << std::endl;
-        return;
-    }
-
-    // Copy the header from the original BMP file
-    std::vector<char> header(54);
-    bmpFile.read(header.data(), 54);
-    outFile.write(header.data(), 54);
-
-    int width = image[0].size(), height = image.size();
-    int rowPadding = (4 - (width * 3) % 4) % 4;
-
-    // Write the new image data
-    for (int y = height - 1; y >= 0; y--) {
-        outFile.write(reinterpret_cast<const char*>(image[y].data()), width * sizeof(RGB));
-        for (int i = 0; i < rowPadding; i++) {
-            outFile.put(0);
-        }
-    }
-}
-
-void writeBmpResizeSingleThread(const std::string& filename, const std::vector<std::vector<RGB>>& image, int resizedWidth, int resizedHeight) {
-    std::ofstream outFile(filename, std::ios::binary);
-    if (!outFile) {
-        std::cerr << "Could not open output file for writing." << std::endl << std::endl;
-        return;
-    }
-
-    int width = image[0].size();
-    int height = image.size();
-    int rowPadding = (4 - (width * 3) % 4) % 4;
-    int fileSize = 54 + (width*3 + rowPadding) * height; // Header size (54 bytes) + pixel data
-
-    // Simple BMP header for a 24-bit BMP
-    unsigned char header[54] = {
-        'B','M',  // Signature
-        0,0,0,0,  // Image file size in bytes
-        0,0,0,0,  // Reserved
-        54,0,0,0, // Start of pixel array
-        40,0,0,0, // Info header size
-        0,0,0,0,  // Image width
-        0,0,0,0,  // Image height
-        1,0,      // Number of color planes
-        24,0,     // Bits per pixel
-        0,0,0,0,  // Compression
-        0,0,0,0,  // Image size
-        0,0,0,0,  // Horizontal resolution
-        0,0,0,0,  // Vertical resolution
-        0,0,0,0,  // Colors in color table
-        0,0,0,0,  // Important color count
-    };
-
-    // Fill in the file size, width, and height in the header
-    *reinterpret_cast<int*>(&header[2]) = fileSize;
-    *reinterpret_cast<int*>(&header[18]) = width;
-    *reinterpret_cast<int*>(&header[22]) = height;
-
-    // Write the header
-    outFile.write(reinterpret_cast<const char*>(header), 54);
-
-    // Write the pixel data
-    for (int y = height - 1; y >= 0; --y) {
-        outFile.write(reinterpret_cast<const char*>(image[y].data()), width * sizeof(RGB));
-        for (int i = 0; i < rowPadding; ++i) {
-            outFile.put(0);
-        }
-    }
-}
-
-// Apply box blur to the image
+// Apply box blur to the image with one thread
 std::vector<std::vector<RGB>> applyBoxBlurSingleThread(const std::vector<std::vector<RGB>>& image, int boxSize) {
     int height = image.size(), width = image[0].size(); // Dimensions of the input image
     std::vector<std::vector<RGB>> blurredImage(height, std::vector<RGB>(width)); // Preparing the output image with the same dimensions
@@ -489,7 +428,7 @@ std::vector<std::vector<RGB>> applyBoxBlurSingleThread(const std::vector<std::ve
     return blurredImage; // Return the blurred image
 }
 
-// Apply motion blur to the image based on a given motion length
+// Apply motion blur to the image based on a given motion length with one thread
 std::vector<std::vector<RGB>> applyMotionBlurSingleThread(const std::vector<std::vector<RGB>>& image, int motionLength) {
     int height = image.size(), width = image[0].size(); // Get the dimensions of the input image
     std::vector<std::vector<RGB>> blurredImage(height, std::vector<RGB>(width)); // Prepare the output image with the same dimensions
@@ -525,14 +464,16 @@ std::vector<std::vector<RGB>> applyMotionBlurSingleThread(const std::vector<std:
     return blurredImage; // Return the image with applied motion blur
 }
 
-// Function to calculate Euclidean distance between two colors in RGB space
-double colorDistance(const RGB& color1, const RGB& color2) {
+// Function to calculate Euclidean distance between two colors in RGB space with one thread
+double colorDistanceSingleThread(const RGB& color1, const RGB& color2) {
     return std::sqrt(
         (color1.red - color2.red) * (color1.red - color2.red) +
         (color1.green - color2.green) * (color1.green - color2.green) +
         (color1.blue - color2.blue) * (color1.blue - color2.blue)
     );
 }
+
+// Apply bucket fill to the other image using one thread with one thread
 std::vector<std::vector<RGB>> applyBucketFillSingleThread(const std::vector<std::vector<RGB>>& image, int threshold) {
     int height = image.size(), width = image[0].size();
     const RGB fillColor  = {0, 255, 0}; // Green color
@@ -563,7 +504,7 @@ std::vector<std::vector<RGB>> applyBucketFillSingleThread(const std::vector<std:
         if (x < 0 || x >= width || y < 0 || y >= height || visited[y][x]) continue;
 
         // Improved check using Euclidean distance for color threshold
-        if (colorDistance(image[y][x], targetColor) <= threshold) {
+        if (colorDistanceSingleThread(image[y][x], targetColor) <= threshold) {
             bucketFilledImage[y][x] = fillColor; // Apply fill color
             visited[y][x] = true; // Mark as visited
 
@@ -578,24 +519,24 @@ std::vector<std::vector<RGB>> applyBucketFillSingleThread(const std::vector<std:
     return bucketFilledImage;
 }
 
-// Bicubic interpolation kernel based on Catmull-Rom spline
-double cubicInterpolate(double p[4], double x) {
+// Bicubic interpolation kernel based on Catmull-Rom spline with one thread
+double cubicInterpolateSingleThread(double p[4], double x) {
     // Performs the cubic interpolation formula on a set of four points (p[0] to p[3]) and a parameter x
     return p[1] + 0.5 * x * (p[2] - p[0] + x * (2.0 * p[0] - 5.0 * p[1] + 4.0 * p[2] - p[3] + x * (3.0 * (p[1] - p[2]) + p[3] - p[0])));
 }
 
 // Function to perform bicubic interpolation on a 4x4 patch of an image
-double bicubicInterpolate(double arr[4][4], double x, double y) {
+double bicubicInterpolateSingleThread(double arr[4][4], double x, double y) {
     double colArr[4];
     // Interpolates the values along the y-axis
     for (int i = 0; i < 4; i++) {
-        colArr[i] = cubicInterpolate(arr[i], y);
+        colArr[i] = cubicInterpolateSingleThread(arr[i], y);
     }
     // Interpolates the result along the x-axis
-    return cubicInterpolate(colArr, x);
+    return cubicInterpolateSingleThread(colArr, x);
 }
 
-// Function to resize an image using bicubic interpolation
+// Function to resize an image using bicubic interpolation with one thread
 std::vector<std::vector<RGB>> resizeBicubicSingleThread(const std::vector<std::vector<RGB>>& image, int newWidth, int newHeight) {
     int imgHeight = image.size();
     int imgWidth = image[0].size();
@@ -632,16 +573,16 @@ std::vector<std::vector<RGB>> resizeBicubicSingleThread(const std::vector<std::v
             }
 
             // Interpolate the color values for the new pixel and ensure they are within the valid range
-            resized[i][j].red = std::clamp(static_cast<int>(bicubicInterpolate(redVals, xDiff, yDiff)), 0, 255);
-            resized[i][j].green = std::clamp(static_cast<int>(bicubicInterpolate(greenVals, xDiff, yDiff)), 0, 255);
-            resized[i][j].blue = std::clamp(static_cast<int>(bicubicInterpolate(blueVals, xDiff, yDiff)), 0, 255);
+            resized[i][j].red = std::clamp(static_cast<int>(bicubicInterpolateSingleThread(redVals, xDiff, yDiff)), 0, 255);
+            resized[i][j].green = std::clamp(static_cast<int>(bicubicInterpolateSingleThread(greenVals, xDiff, yDiff)), 0, 255);
+            resized[i][j].blue = std::clamp(static_cast<int>(bicubicInterpolateSingleThread(blueVals, xDiff, yDiff)), 0, 255);
         }
     }
 
     return resized;
 }
 
-// Function to resize an image using bilinear interpolation
+// Function to resize an image using bilinear interpolation with one thread
 std::vector<std::vector<RGB>> resizeBilinearSingleThread(const std::vector<std::vector<RGB>>& image, int newWidth, int newHeight) {
     int imgHeight = image.size();
     int imgWidth = image[0].size();
@@ -689,6 +630,7 @@ std::vector<std::vector<RGB>> resizeBilinearSingleThread(const std::vector<std::
     return resized;
 }
 
+// Apply nearest neighbor resizing to the image with one thread
 std::vector<std::vector<RGB>> nearestNeighborResizeSingleThread(const std::vector<std::vector<RGB>>& image, int newWidth, int newHeight) {
         int imageWidth = image.size();
         int imageHeight = image[0].size();
@@ -710,57 +652,122 @@ std::vector<std::vector<RGB>> nearestNeighborResizeSingleThread(const std::vecto
         return resizedImage;
 }
 
-// Read and processes bitmap images using multiple threads
-std::vector<std::vector<RGB>> readBmpMultipleThread(const std::string& filename) {
+// Save the new image data by copying the original file and replacing the header (for resize) and pixel color data  with one thread
+void writeBmpSingleThread(const std::string& filename, const std::vector<std::vector<RGB>>& image, bool resize, int resizedWidth, int resizedHeight) {
+    std::ofstream outFile(filename, std::ios::binary);
+    if (!outFile) {
+        std::cerr << "Could not open output file for writing." << std::endl << std::endl;
+        return;
+    }
+
+
+    int width = image[0].size();
+    int height = image.size();
+    int rowPadding = (4 - (width * 3) % 4) % 4;
+
+    if (resize) {
+
+        int fileSize = 54 + (width*3 + rowPadding) * height; // Header size (54 bytes) + pixel data
+
+        // Simple BMP header for a 24-bit BMP
+        unsigned char header[54] = {
+            'B','M',  // Signature
+            0,0,0,0,  // Image file size in bytes
+            0,0,0,0,  // Reserved
+            54,0,0,0, // Start of pixel array
+            40,0,0,0, // Info header size
+            0,0,0,0,  // Image width
+            0,0,0,0,  // Image height
+            1,0,      // Number of color planes
+            24,0,     // Bits per pixel
+            0,0,0,0,  // Compression
+            0,0,0,0,  // Image size
+            0,0,0,0,  // Horizontal resolution
+            0,0,0,0,  // Vertical resolution
+            0,0,0,0,  // Colors in color table
+            0,0,0,0,  // Important color count
+        };
+
+        // Fill in the file size, width, and height in the header
+        *reinterpret_cast<int*>(&header[2]) = fileSize;
+        *reinterpret_cast<int*>(&header[18]) = width;
+        *reinterpret_cast<int*>(&header[22]) = height;
+
+        // Write the header
+        outFile.write(reinterpret_cast<const char*>(header), 54);
+
+    }
+
+    // Write the pixel data
+    for (int y = height - 1; y >= 0; --y) {
+        outFile.write(reinterpret_cast<const char*>(image[y].data()), width * sizeof(RGB));
+        for (int i = 0; i < rowPadding; ++i) {
+            outFile.put(0);
+        }
+    }
+}
+
+// Read bitmap images with many threads
+std::vector<std::vector<RGB>> readBmpSingleThread(const std::string& filename) {
 
 }
 
-// Write and resize images using multiple threads
-void writeBmpResizeMultipleThread(const std::string& filename, const std::vector<std::vector<RGB>>& image, int resizedWidth, int resizedHeight) {
+// Generate the Gaussian kernel with many threads
+std::vector<std::vector<double>> generateGaussianKernelSingleThread(double sigma) {
 
 }
 
-// Generate the Gaussian kernel to support Gaussian blur using multiple threads
-std::vector<std::vector<double>> generateGaussianKernelMultipleThread(double sigma) {
+// Apply Gaussian blur to an image with many threads
+std::vector<std::vector<RGB>> applyGaussianBlurSingleThread(const std::vector<std::vector<RGB>>& image, const std::vector<std::vector<double>>& kernel) {
 
 }
 
-// Apply Gaussian blur to the image using multiple threads
-std::vector<std::vector<RGB>> applyGaussianBlurMultipleThread(const std::vector<std::vector<RGB>>& image, const std::vector<std::vector<double>>& kernel) {
+// Apply box blur to the image with many threads
+std::vector<std::vector<RGB>> applyBoxBlurSingleThread(const std::vector<std::vector<RGB>>& image, int boxSize) {
 
 }
 
-// Save the new image data by copying the original file and replacing the pixel color data using multiple threads
-void writeBmpMultipleThread(const std::string& filename, const std::vector<std::vector<RGB>>& image) {
+// Apply motion blur to the image based on a given motion length with many threads
+std::vector<std::vector<RGB>> applyMotionBlurSingleThread(const std::vector<std::vector<RGB>>& image, int motionLength) {
 
 }
 
-// Apply box blur to the image using multiple threads
-std::vector<std::vector<RGB>> applyBoxBlurMultipleThread(const std::vector<std::vector<RGB>>& image, int boxSize) {
+// Function to calculate Euclidean distance between two colors in RGB space with many threads
+double colorDistanceSingleThread(const RGB& color1, const RGB& color2) {
 
 }
 
-// Apply motion blur to the image using multiple threads
-std::vector<std::vector<RGB>> applyMotionBlurMultipleThread(const std::vector<std::vector<RGB>>& image, int motionLength) {
+// Apply bucket fill to the other image with many threads
+std::vector<std::vector<RGB>> applyBucketFillSingleThread(const std::vector<std::vector<RGB>>& image, int threshold) {
 
 }
 
-// Apply bucket fill to the other image using multiple threads
-std::vector<std::vector<RGB>> applyBucketFillMultipleThread(const std::vector<std::vector<RGB>>& image, int threshold) {
+// Bicubic interpolation kernel based on Catmull-Rom spline with many threads
+double cubicInterpolateSingleThread(double p[4], double x) {
 
 }
 
-// Apply bilinear resizing to the image using multiple threads
-std::vector<std::vector<RGB>> resizeBilinearMultipleThread(const std::vector<std::vector<RGB>>& image, int outputWidth, int outputHeight) {
+// Function to perform bicubic interpolation on a 4x4 patch of an image with many threads
+double bicubicInterpolateSingleThread(double arr[4][4], double x, double y) {
 
 }
 
-// Apply bicubic resizing to the image using multiple threads
-std::vector<std::vector<RGB>> resizeBicubicMultipleThread(const std::vector<std::vector<RGB>>& image, int newWidth, int newHeight) {
+// Function to resize an image using bicubic interpolation with many threads
+std::vector<std::vector<RGB>> resizeBicubicSingleThread(const std::vector<std::vector<RGB>>& image, int newWidth, int newHeight) {
 
 }
 
-// Apply nearest neighbor resizing to the image using multiple threads
-std::vector<std::vector<RGB>> nearestNeighborResizeMultipleThread(const std::vector<std::vector<RGB>>& image, int newWidth, int newHeight) {
+// Function to resize an image using bilinear interpolation with many threads
+std::vector<std::vector<RGB>> resizeBilinearSingleThread(const std::vector<std::vector<RGB>>& image, int newWidth, int newHeight) {
+
+}
+
+// Apply nearest neighbor resizing to the image  with many threads
+std::vector<std::vector<RGB>> nearestNeighborResizeSingleThread(const std::vector<std::vector<RGB>>& image, int newWidth, int newHeight) {
+
+}
+
+// Save the new image data by copying the original file and replacing the header (for resize) and pixel color data  with many threads
+void writeBmpSingleThread(const std::string& filename, const std::vector<std::vector<RGB>>& image, bool resize, int resizedWidth=-1, int resizedHeight=-1) {
 
 }
