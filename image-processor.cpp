@@ -1,3 +1,5 @@
+/*************************************************************INCLUDES*************************************************************/
+
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -12,10 +14,7 @@
 #include <thread>
 #include <mutex>
 #include <cstring>
-#include <climits>
 #include <condition_variable>
-#include <queue>
-#include <optional>
 #include <future>
 #include <iomanip>
 
@@ -26,6 +25,7 @@
 #include <sys/types.h>
 #endif
 
+/*************************************************************INPUTS AND OUTPUTS*************************************************************/
 
 std::string InputFilename; // Input
 const std::string GaussianBlurredOutputFilename = "out/gaussianBlur.bmp"; // Output
@@ -35,6 +35,8 @@ const std::string BucketFillOutputFilename = "out/bucketFill.bmp"; // Output
 const std::string BilinearResizedOutputFilename = "out/bilinearResize.bmp"; // Output
 const std::string BicubicResizedOutputFilename = "out/bicubicResize.bmp"; // Output
 const std::string nearestNeighborResizedOutputFilename = "out/nearestNeighborResize.bmp"; // Output
+
+/*************************************************************DEFAULT PARAMS*************************************************************/
 
 double sigma = 3.0; // Gaussian blur sigma value (blur radius, significant performance impact)
 int boxSize = 9; // Box blur value (blur radius, must be odd)
@@ -51,10 +53,13 @@ int resizeHeightNearestNeighbor = 745; // Desired resize height
 std::string inputImageSize = "small"; // Which input image to use (small medium large)
 std::string function = "all"; // Which function to run (all gaussianBlur boxBlur motionBlur bucketFill bilinearResize bicubicResize nearestNeighborResize)
 
+/*************************************************************CONSTS*************************************************************/
+
 constexpr double PI = 3.14159265358979323846; // PI constant
 
+/*************************************************************STRUCTS*************************************************************/
 
-// RGB structure with the color order as blue, green, red to allow bottom up parsing present in .bmp
+// RGB structure with the color order as blue, green, red to allow bottom up parsing present in .bmp standard
 struct RGB {
     uint8_t blue, green, red; 
 };
@@ -67,6 +72,8 @@ struct ThreadData {
     int width, rowPadding;
     int headerOffset = 54;
 };
+
+/*************************************************************FUNCTION DECLARATION*************************************************************/
 
 // Create an out folder
 void createOutFolder();
@@ -151,8 +158,10 @@ std::vector<std::vector<RGB>> resizeBilinearMultipleThreads(const std::vector<st
 // Apply nearest neighbor resizing to the image with multiple threads
 std::vector<std::vector<RGB>> nearestNeighborResizeMultipleThreads(const std::vector<std::vector<RGB>>& image, int newWidth, int newHeight);
 
+/*************************************************************FUNCTION DEFINITION*************************************************************/
 
 int main(int argc, char* argv[]) {
+    // Check the number of arguments
     if (argc < 15) {
         std::cerr << "Usage: " << argv[0] << " <sigma> <boxSize> <motionLength> <bucketFillThreshold> <bucketFillX> <bucketFillY> resizeWidthBilinear <resizeHeightBilinear> <resizeWidthBicubic> <resizeHeightBicubic> <resizeWidthNearestNeighbor> <resizeHeightNearestNeighbor> <inputImageSize> <function>" << std::endl << std::endl;
         return 1;
@@ -174,6 +183,7 @@ int main(int argc, char* argv[]) {
     inputImageSize = argv[13];
     function = argv[14];
 
+    // Check what input file to use based on parameter
     if (inputImageSize == "small") {
         InputFilename = "in/smallImage.bmp";
     } else if (inputImageSize == "medium") {
@@ -185,6 +195,7 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+    // Newline for visual ease
     std::cout << std::endl;
 
     createOutFolder(); // Create an out folder
@@ -201,7 +212,7 @@ int main(int argc, char* argv[]) {
         {"nearestNeighborResize", nearestNeighborResizeHelper}
     };
 
-    // Execute specified function if provided, else execute all
+    // Execute specified function (if provided) ohterwise execute all
     if (function != "all") {
         if (functions.find(function) != functions.end()) {
             functions[function](image);
@@ -222,30 +233,32 @@ int main(int argc, char* argv[]) {
 void createOutFolder() {
     const char* dir = "out";
 
-#ifdef _WIN32
-    if (!CreateDirectory(dir, NULL)) {
-        if (GetLastError() == ERROR_ALREADY_EXISTS) {
-            std::cout << "Directory already exists.\n";
+    // Using the OS (probably a better way to do this....)
+    #ifdef _WIN32
+        if (!CreateDirectory(dir, NULL)) {
+            if (GetLastError() == ERROR_ALREADY_EXISTS) {
+                std::cout << "Directory already exists.\n";
+            } else {
+                std::cout << "Failed to create directory.\n";
+            }
         } else {
-            std::cout << "Failed to create directory.\n";
+            std::cout << "Directory created successfully.\n";
         }
-    } else {
-        std::cout << "Directory created successfully.\n";
-    }
-#else
-    struct stat st;
-    if (stat(dir, &st) != 0) {
-        if (mkdir(dir, 0755) == 0) {
-            std::cout << "Directory created successfully.\n" << std::endl;
+    #else
+        struct stat st;
+        if (stat(dir, &st) != 0) {
+            if (mkdir(dir, 0755) == 0) {
+                std::cout << "Directory created successfully.\n" << std::endl;
+            } else {
+                perror("Failed to create directory");
+            }
         } else {
-            perror("Failed to create directory");
+            std::cout << "Directory already exists.\n" << std::endl;
         }
-    } else {
-        std::cout << "Directory already exists.\n" << std::endl;
-    }
-#endif
+    #endif
 }
 
+// Helper function for parsing image
 std::vector<std::vector<RGB>> parseImageHelper() {
     std::cout << "Parsing input image using a single thread..." << std::endl;
     auto start = std::chrono::high_resolution_clock::now();
@@ -268,6 +281,7 @@ std::vector<std::vector<RGB>> parseImageHelper() {
     return image;
 }
 
+// Helper function for timing and implementing the gaussian blur function
 void gaussianBlurHelper(std::vector<std::vector<RGB>> image) {
     std::cout << "Applying Gaussian blur using a single thread (sigma=" << sigma << ")..." << std::endl;
     auto start = std::chrono::high_resolution_clock::now();
@@ -294,6 +308,7 @@ void gaussianBlurHelper(std::vector<std::vector<RGB>> image) {
     std::cout << "Multithreading speedup factor: " << std::fixed << std::setprecision(1) << speedupFactor << "x" << std::endl << std::endl;
 }
 
+// Helper function for timing and implementing the box blur function
 void boxBlurHelper(std::vector<std::vector<RGB>> image) {
     std::cout << "Applying box blur using a single thread (boxSize=" << boxSize << ")..." << std::endl;
     auto start = std::chrono::high_resolution_clock::now();
@@ -318,6 +333,7 @@ void boxBlurHelper(std::vector<std::vector<RGB>> image) {
     std::cout << "Multithreading speedup factor: " << std::fixed << std::setprecision(1) << speedupFactor << "x" << std::endl << std::endl;
 }
 
+// Helper function for timing and implementing the motion blur function
 void motionBlurHelper(std::vector<std::vector<RGB>> image) {
     std::cout << "Applying motion blur using a single thread (motionLength=" << motionLength << ")..." << std::endl;
     auto start = std::chrono::high_resolution_clock::now();
@@ -342,6 +358,7 @@ void motionBlurHelper(std::vector<std::vector<RGB>> image) {
     std::cout << "Multithreading speedup factor: " << std::fixed << std::setprecision(1) << speedupFactor << "x" << std::endl << std::endl;
 }
 
+// Helper function for timing and implementing the bucket fill function
 void bucketFillHelper(std::vector<std::vector<RGB>> image) {
     std::cout << "Applying bucket fill using a single thread (Threshold=" << bucketFillThreshold << ")..." << std::endl;
     auto start = std::chrono::high_resolution_clock::now();
@@ -366,6 +383,7 @@ void bucketFillHelper(std::vector<std::vector<RGB>> image) {
     std::cout << "Multithreading speedup factor: " << std::fixed << std::setprecision(1) << speedupFactor << "x" << std::endl << std::endl;
 }
 
+// Helper function for timing and implementing the bilinear resize function
 void bilinearResizeHelper(std::vector<std::vector<RGB>> image) {
     std::cout << "Applying bilinear resizing using a single thread (Output Size=" << resizeWidthBilinear << "x" << resizeHeightBilinear << ")..." << std::endl;
     auto start = std::chrono::high_resolution_clock::now();
@@ -390,6 +408,7 @@ void bilinearResizeHelper(std::vector<std::vector<RGB>> image) {
     std::cout << "Multithreading speedup factor: " << std::fixed << std::setprecision(1) << speedupFactor << "x" << std::endl << std::endl;
 }
 
+// Helper function for timing and implementing the bicubic resize function
 void bicubicResizeHelper(std::vector<std::vector<RGB>> image) {
     std::cout << "Applying bicubic resizing using a single thread (Output Size=" << resizeWidthBicubic << "x" << resizeHeightBicubic << ")..." << std::endl;
     auto start = std::chrono::high_resolution_clock::now();
@@ -414,6 +433,7 @@ void bicubicResizeHelper(std::vector<std::vector<RGB>> image) {
     std::cout << "Multithreading speedup factor: " << std::fixed << std::setprecision(1) << speedupFactor << "x" << std::endl << std::endl;
 }
 
+// Helper function for timing and implementing the nearest neighbor resize function
 void nearestNeighborResizeHelper(std::vector<std::vector<RGB>> image) {
     std::cout << "Applying nearest neighbor resizing using a single thread (Output Size=" << resizeWidthNearestNeighbor << "x" << resizeHeightNearestNeighbor << ")..." << std::endl;
     auto start = std::chrono::high_resolution_clock::now();
@@ -437,7 +457,6 @@ void nearestNeighborResizeHelper(std::vector<std::vector<RGB>> image) {
 
     std::cout << "Multithreading speedup factor: " << std::fixed << std::setprecision(1) << speedupFactor << "x" << std::endl << std::endl;
 }
-
 
 // Read bitmap images with one thread
 std::vector<std::vector<RGB>> readBmpSingleThread(const std::string& filename) {
@@ -620,7 +639,7 @@ std::vector<std::vector<RGB>> applyBucketFillSingleThread(const std::vector<std:
 
     RGB targetColor = image[seedY][seedX];
 
-    // Stack for iterative DFS
+    // Stack for iterative DFS (love me some CS2)
     std::stack<std::pair<int, int>> stack;
     stack.push({seedX, seedY});
 
@@ -776,14 +795,14 @@ std::vector<std::vector<RGB>> nearestNeighborResizeSingleThread(const std::vecto
             int originalY = (int)(y / heightScale);
 
             // Access elements correctly based on the dimensions
-            resizedImage[y][x] = image[originalY][originalX]; // Notice the order of indices
+            resizedImage[y][x] = image[originalY][originalX];
         }
     }
 
     return resizedImage;
 }
 
-// Save the new image data by copying the original file and replacing the header (for resize) and pixel color data  with one thread
+// Save the new image data by copying the original file and replacing the header (for resize) and pixel color data with one thread
 void writeBmp(const std::string& filename, const std::vector<std::vector<RGB>>& image, bool resize, int resizedWidth, int resizedHeight) {
     std::ofstream outFile(filename, std::ios::binary);
     if (!outFile) {
@@ -796,7 +815,7 @@ void writeBmp(const std::string& filename, const std::vector<std::vector<RGB>>& 
     int rowPadding = (4 - (width * 3) % 4) % 4;
     int fileSize = 54 + (width * 3 + rowPadding) * height; // Adjust file size calculation for resizing
 
-    // Simple BMP header for a 24-bit BMP
+    // Simple BMP header for a 24bit BMP
     unsigned char header[54] = {
         'B','M',  // Signature
         0,0,0,0,  // Image file size in bytes
@@ -842,7 +861,7 @@ void writeBmp(const std::string& filename, const std::vector<std::vector<RGB>>& 
     }
 }
 
-// Thread function to read rows. 
+// Thread function to read rows
 void readRowsMultipleThreads(const ThreadData* data) {
     std::ifstream bmpFile(*data->filename, std::ios::binary);
     if (!bmpFile) {
@@ -1157,7 +1176,7 @@ std::vector<std::vector<RGB>> applyBucketFillMultipleThreads(const std::vector<s
     std::vector<std::vector<RGB>> bucketFilledImage = image; // Copy of the original image to apply the fill
     std::vector<std::vector<bool>> visited(height, std::vector<bool>(width, false)); // Keep track of visited pixels
     
-    // Lambda function to fill starting from a point with offset applied to the seed point. This allows starting the fill from different directions.
+    // Lambda function to fill starting from a point with offset applied to the seed point - allows starting the fill from different directions
     auto fillFunc = [&](int offsetX, int offsetY) {
         std::stack<std::pair<int, int>> stack; // Use a stack for depth-first search (DFS)
         stack.push({bucketFillX + offsetX, bucketFillY + offsetY}); // Starting point with offset
