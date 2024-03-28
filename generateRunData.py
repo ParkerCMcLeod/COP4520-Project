@@ -4,8 +4,8 @@ import re
 import subprocess
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
 from numpy.polynomial.polynomial import Polynomial
+import matplotlib.pyplot as plt
 
 
 GENERATE_RUNS = False
@@ -24,7 +24,7 @@ if (GENERATE_RUNS):
     # Loop through each combination of function and imageSize
     for function in functions:
         for imageSize in imageSizes:
-            cmd = f"make run sigma=3.0 boxSize=9 motionLength=15 bucketFillThreshold=75 bucketFillX=800 bucketFillY=170 resizeWidthBilinear=500 resizeHeightBilinear=745 resizeWidthBicubic=500 resizeHeightBicubic=745 resizeWidthNearestNeighbor=500 resizeHeightNearestNeighbor=745 inputImageSize={imageSize} function={function}"
+            cmd = f"make run sigma=3.0 boxSize=9 motionLength=15 bucketFillThreshold=75 bucketFillX=800 bucketFillY=170 resizeWidthBilinear=1500 resizeHeightBilinear=2235 resizeWidthBicubic=1500 resizeHeightBicubic=2235 resizeWidthNearestNeighbor=1500 resizeHeightNearestNeighbor=2235 inputImageSize={imageSize} function={function}"
 
             outputFile = f"{outputDir}/{imageSize}_{function}.txt"
 
@@ -96,19 +96,27 @@ if (GRAPH_OUTPUTS):
     # Load the CSV data into a DataFrame
     df = pd.read_csv('runData.csv')
 
+    # Ensure the 'plots' directory exists
+    if not os.path.exists('plots'):
+        os.makedirs('plots')
+
+
     # List of functions to plot
     functions = df['function'].unique()
+    # List of the associated setting for these runs to print
+    function_settings = ['Resize=1500x2235', 'Resize=1500x2235', 'BoxSize=9', 'ColorThreshold=75 Pos=800x170', 'Sigma=3', 'MotionLength=15', 'Resize=1500x2235']
 
-    for function in functions:
+    for i, function in enumerate(functions):
         # Filter data for the current function
         func_data = df[df['function'] == function]
         
-        # Extract pixelCount, singleThread, and multiThread execution times
+        # Extract pixelCount, singleThread, multiThread execution times, and speedup factor
         x = func_data['pixelCount']
         y_single = func_data['timeTakenFunctionExecutionSingleThread']
         y_multi = func_data['timeTakenFunctionExecutionMultipleThreads']
+        speedup_factors = func_data['functionExecutionSpeedupFactor']
         
-        # Fit a quadratic curve (2nd degree polynomial) for single-threaded execution times
+        # Fit a quadratic curve for single-threaded execution times
         coefs_single = Polynomial.fit(x, y_single, 2).convert().coef
         # Fit a quadratic curve for multi-threaded execution times
         coefs_multi = Polynomial.fit(x, y_multi, 2).convert().coef
@@ -121,13 +129,21 @@ if (GRAPH_OUTPUTS):
         
         # Plotting
         plt.figure(figsize=(10, 6))
-        plt.plot(x_range, y_single_fit, label='Single Threaded', color='blue')
-        plt.plot(x_range, y_multi_fit, label='Multi Threaded', color='red')
-        plt.scatter(x, y_single, color='blue', alpha=0.5)  # Original data points
-        plt.scatter(x, y_multi, color='red', alpha=0.5)  # Original data points
-        plt.title(f'{function} performance vs pixel count')
-        plt.xlabel('Pixel Count')
+        plt.plot(x_range, y_single_fit, label='Single-Threaded Best Quadratic Fit', color='blue')
+        plt.plot(x_range, y_multi_fit, label='Multi-Threaded (n=12) Best Quadratic Fit', color='red')
+        plt.scatter(x, y_single, color='blue', alpha=0.5)  # Original data points for single-threaded
+        plt.scatter(x, y_multi, color='red', alpha=0.5)  # Original data points for multi-threaded
+        
+        # Annotating each multi-threaded point with its speedup factor
+        for j, txt in enumerate(speedup_factors):
+            plt.annotate(f'{txt:.1f}x faster', (x.iloc[j], y_multi.iloc[j]), textcoords="offset points", xytext=(8,-15), ha='center')
+        
+        plt.title(f'{function} Function Latency vs Total Pixel Count for ({function_settings[i]})')
+        plt.xlabel('Pixel Count (px)')
         plt.ylabel('Execution Time (ms)')
         plt.legend()
         plt.grid(True)
-        plt.show()
+        
+        # Save the figure
+        plt.savefig(f'plots/{function}_performance_plot.png')
+        plt.close()  # Close the plot to prevent it from displaying

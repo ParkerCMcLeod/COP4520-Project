@@ -1,20 +1,20 @@
 pip install pillow
 Requirement already satisfied: pillow in c:\users\porke\appdata\local\programs\python\python312\lib\site-packages (10.2.0)
 g++ -std=c++2a -pthread image-processor.o -o image-processor.exe
-./image-processor.exe 3.0 9 15 75 800 170 500 745 500 745 500 745 medium boxBlur
+./image-processor.exe 3.0 9 15 75 800 170 1500 2235 1500 2235 1500 2235 medium boxBlur
 
 Directory already exists.
 Parsing input image using a single thread...
-Time taken for parsing input image using a single thread (10736000px): 23 milliseconds.
+Time taken for parsing input image using a single thread (15698100px): 31 milliseconds.
 Parsing input image using multiple threads...
-Time taken for parsing input image using multiple threads (10736000px): 22 milliseconds.
+Time taken for parsing input image using multiple threads (15698100px): 30 milliseconds.
 Multithreading speedup factor: 1.0x
 
 Applying box blur using a single thread (boxSize=9)...
-Time taken for applying box blur using a single thread: 5452 milliseconds.
+Time taken for applying box blur using a single thread: 7933 milliseconds.
 Saved box-blurred image to "out/boxBlur.bmp"
 Applying box blur using multiple threads (boxSize=9)...
-Time taken for applying box blur using multiple threads: 1168 milliseconds.
+Time taken for applying box blur using multiple threads: 1580 milliseconds.
 Saved box-blurred image to "out/boxBlur.bmp"
-Multithreading speedup factor: 4.7x
+Multithreading speedup factor: 5.0x
 
