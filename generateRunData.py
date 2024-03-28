@@ -8,8 +8,8 @@ from numpy.polynomial.polynomial import Polynomial
 import matplotlib.pyplot as plt
 
 
-GENERATE_RUNS = False
-PARSE_RUN_OUTPUTS = False
+GENERATE_RUNS = True
+PARSE_RUN_OUTPUTS = True
 GRAPH_OUTPUTS = True
 
 if (GENERATE_RUNS):
