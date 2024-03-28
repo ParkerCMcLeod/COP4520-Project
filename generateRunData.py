@@ -4,8 +4,8 @@ import re
 import subprocess
 import pandas as pd
 import numpy as np
-from numpy.polynomial.polynomial import Polynomial
 import matplotlib.pyplot as plt
+from numpy.polynomial.polynomial import Polynomial
 
 
 GENERATE_RUNS = True
@@ -96,6 +96,7 @@ if (GRAPH_OUTPUTS):
     # Load the CSV data into a DataFrame
     df = pd.read_csv('runData.csv')
 
+<<<<<<< HEAD
     # Ensure the 'plots' directory exists
     if not os.path.exists('plots'):
         os.makedirs('plots')
@@ -117,6 +118,21 @@ if (GRAPH_OUTPUTS):
         speedup_factors = func_data['functionExecutionSpeedupFactor']
         
         # Fit a quadratic curve for single-threaded execution times
+=======
+    # List of functions to plot
+    functions = df['function'].unique()
+
+    for function in functions:
+        # Filter data for the current function
+        func_data = df[df['function'] == function]
+        
+        # Extract pixelCount, singleThread, and multiThread execution times
+        x = func_data['pixelCount']
+        y_single = func_data['timeTakenFunctionExecutionSingleThread']
+        y_multi = func_data['timeTakenFunctionExecutionMultipleThreads']
+        
+        # Fit a quadratic curve (2nd degree polynomial) for single-threaded execution times
+>>>>>>> dev
         coefs_single = Polynomial.fit(x, y_single, 2).convert().coef
         # Fit a quadratic curve for multi-threaded execution times
         coefs_multi = Polynomial.fit(x, y_multi, 2).convert().coef
@@ -129,6 +145,7 @@ if (GRAPH_OUTPUTS):
         
         # Plotting
         plt.figure(figsize=(10, 6))
+<<<<<<< HEAD
         plt.plot(x_range, y_single_fit, label='Single-Threaded Best Quadratic Fit', color='blue')
         plt.plot(x_range, y_multi_fit, label='Multi-Threaded (n=12) Best Quadratic Fit', color='red')
         plt.scatter(x, y_single, color='blue', alpha=0.5)  # Original data points for single-threaded
@@ -147,3 +164,15 @@ if (GRAPH_OUTPUTS):
         # Save the figure
         plt.savefig(f'plots/{function}_performance_plot.png')
         plt.close()  # Close the plot to prevent it from displaying
+=======
+        plt.plot(x_range, y_single_fit, label='Single Threaded', color='blue')
+        plt.plot(x_range, y_multi_fit, label='Multi Threaded', color='red')
+        plt.scatter(x, y_single, color='blue', alpha=0.5)  # Original data points
+        plt.scatter(x, y_multi, color='red', alpha=0.5)  # Original data points
+        plt.title(f'{function} performance vs pixel count')
+        plt.xlabel('Pixel Count')
+        plt.ylabel('Execution Time (ms)')
+        plt.legend()
+        plt.grid(True)
+        plt.show()
+>>>>>>> dev
