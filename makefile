@@ -1,13 +1,10 @@
-# Detect OS
-OS := $(shell uname -s)
-
 # Specify the compiler
 CXX=g++
 
 # Compiler flags
 CXXFLAGS=-std=c++2a -pthread
 
-# Target executable name
+# Detect OS
 ifeq ($(OS),Windows_NT)
     TARGET=image-processor.exe
     RM=del /Q
