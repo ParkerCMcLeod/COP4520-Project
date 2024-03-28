@@ -1,20 +1,20 @@
 pip install pillow
 Requirement already satisfied: pillow in c:\users\porke\appdata\local\programs\python\python312\lib\site-packages (10.2.0)
 g++ -std=c++2a -pthread image-processor.o -o image-processor.exe
-./image-processor.exe 3.0 9 15 75 800 170 500 745 500 745 500 745 medium bucketFill
+./image-processor.exe 3.0 9 15 75 800 170 1500 2235 1500 2235 1500 2235 medium bucketFill
 
 Directory already exists.
 Parsing input image using a single thread...
-Time taken for parsing input image using a single thread (10736000px): 21 milliseconds.
+Time taken for parsing input image using a single thread (15698100px): 37 milliseconds.
 Parsing input image using multiple threads...
-Time taken for parsing input image using multiple threads (10736000px): 21 milliseconds.
-Multithreading speedup factor: 1.0x
+Time taken for parsing input image using multiple threads (15698100px): 34 milliseconds.
+Multithreading speedup factor: 1.1x
 
 Applying bucket fill using a single thread (Threshold=75)...
-Time taken for applying bucket fill using a single thread: 1320 milliseconds.
+Time taken for applying bucket fill using a single thread: 2425 milliseconds.
 Saved bucket-filled image to "out/bucketFill.bmp"
 Applying bucket fill using multiple threads (Threshold=75)...
-Time taken for applying bucket fill using multiple threads: 1032 milliseconds.
+Time taken for applying bucket fill using multiple threads: 1350 milliseconds.
 Saved bucket-filled image to "out/bucketFill.bmp"
-Multithreading speedup factor: 1.3x
+Multithreading speedup factor: 1.8x
 

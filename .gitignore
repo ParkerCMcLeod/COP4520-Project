@@ -1,9 +1,6 @@
 # VS Code
 .vscode
 
-# out
-out
-
 # Prerequisites
 *.d
 

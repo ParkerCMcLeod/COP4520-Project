@@ -1,20 +1,20 @@
 pip install pillow
 Requirement already satisfied: pillow in c:\users\porke\appdata\local\programs\python\python312\lib\site-packages (10.2.0)
 g++ -std=c++2a -pthread image-processor.o -o image-processor.exe
-./image-processor.exe 3.0 9 15 75 800 170 500 745 500 745 500 745 small bicubicResize
+./image-processor.exe 3.0 9 15 75 800 170 1500 2235 1500 2235 1500 2235 small bicubicResize
 
 Directory already exists.
 Parsing input image using a single thread...
 Time taken for parsing input image using a single thread (1490000px): 4 milliseconds.
 Parsing input image using multiple threads...
-Time taken for parsing input image using multiple threads (1490000px): 6 milliseconds.
-Multithreading speedup factor: 0.7x
+Time taken for parsing input image using multiple threads (1490000px): 5 milliseconds.
+Multithreading speedup factor: 0.8x
 
-Applying bicubic resizing using a single thread (Output Size=500x745)...
-Time taken for applying bicubic resizing using a single thread: 105 milliseconds.
+Applying bicubic resizing using a single thread (Output Size=1500x2235)...
+Time taken for applying bicubic resizing using a single thread: 902 milliseconds.
 Saved bicubic-resized image to "out/bicubicResize.bmp"
-Applying bicubic resizing using multiple threads (Output Size=500x745)...
-Time taken for applying bicubic resizing using multiple threads: 18 milliseconds.
+Applying bicubic resizing using multiple threads (Output Size=1500x2235)...
+Time taken for applying bicubic resizing using multiple threads: 167 milliseconds.
 Saved bicubic-resized image to "out/bicubicResize.bmp"
-Multithreading speedup factor: 5.8x
+Multithreading speedup factor: 5.4x
 
