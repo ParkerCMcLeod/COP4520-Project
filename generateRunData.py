@@ -2,9 +2,15 @@ import csv
 import os
 import re
 import subprocess
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from numpy.polynomial.polynomial import Polynomial
+
 
 GENERATE_RUNS = False
-PARSE_RUN_OUTPUTS = True
+PARSE_RUN_OUTPUTS = False
+GRAPH_OUTPUTS = True
 
 if (GENERATE_RUNS):
     functions = ['gaussianBlur', 'boxBlur', 'motionBlur', 'bucketFill', 'bilinearResize', 'bicubicResize', 'nearestNeighborResize']
@@ -85,3 +91,43 @@ if (PARSE_RUN_OUTPUTS):
                 writer.writerow(data)
 
     print("Data extraction and CSV update complete.")
+
+if (GRAPH_OUTPUTS):
+    # Load the CSV data into a DataFrame
+    df = pd.read_csv('runData.csv')
+
+    # List of functions to plot
+    functions = df['function'].unique()
+
+    for function in functions:
+        # Filter data for the current function
+        func_data = df[df['function'] == function]
+        
+        # Extract pixelCount, singleThread, and multiThread execution times
+        x = func_data['pixelCount']
+        y_single = func_data['timeTakenFunctionExecutionSingleThread']
+        y_multi = func_data['timeTakenFunctionExecutionMultipleThreads']
+        
+        # Fit a quadratic curve (2nd degree polynomial) for single-threaded execution times
+        coefs_single = Polynomial.fit(x, y_single, 2).convert().coef
+        # Fit a quadratic curve for multi-threaded execution times
+        coefs_multi = Polynomial.fit(x, y_multi, 2).convert().coef
+        
+        # Generate a range of pixel counts for plotting the fitted curves
+        x_range = np.linspace(x.min(), x.max(), 500)
+        # Calculate the fitted values using the quadratic equation
+        y_single_fit = coefs_single[0] + coefs_single[1]*x_range + coefs_single[2]*x_range**2
+        y_multi_fit = coefs_multi[0] + coefs_multi[1]*x_range + coefs_multi[2]*x_range**2
+        
+        # Plotting
+        plt.figure(figsize=(10, 6))
+        plt.plot(x_range, y_single_fit, label='Single Threaded', color='blue')
+        plt.plot(x_range, y_multi_fit, label='Multi Threaded', color='red')
+        plt.scatter(x, y_single, color='blue', alpha=0.5)  # Original data points
+        plt.scatter(x, y_multi, color='red', alpha=0.5)  # Original data points
+        plt.title(f'{function} performance vs pixel count')
+        plt.xlabel('Pixel Count')
+        plt.ylabel('Execution Time (ms)')
+        plt.legend()
+        plt.grid(True)
+        plt.show()
